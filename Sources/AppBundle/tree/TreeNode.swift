@@ -117,6 +117,10 @@ class TreeNode: Equatable, AeroAny {
         return iterator.next() ?? children.last
     }
 
+    var mostRecentChildren: MruStackIterator<TreeNode> {
+        return _mruChildren.makeIterator()
+    }
+
     @discardableResult
     func unbindFromParent() -> BindingData {
         unbindIfBound() ?? dieT("\(self) is already unbound. The stacktrace where it was unbound:\n\(unboundStacktrace ?? "nil")")
