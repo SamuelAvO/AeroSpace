@@ -6,9 +6,13 @@ public struct LayoutCmdArgs: CmdArgs {
         allowInConfig: true,
         help: layout_help_generated,
         options: [
-            "--window-id": optionalWindowIdFlag(),
+            "--window-id": optionalWindowIdFlag()
         ],
-        arguments: [newArgParser(\.toggleBetween, parseToggleBetween, mandatoryArgPlaceholder: LayoutDescription.unionLiteral)],
+        arguments: [
+            newArgParser(
+                \.toggleBetween, parseToggleBetween,
+                mandatoryArgPlaceholder: LayoutDescription.unionLiteral)
+        ],
     )
 
     public var toggleBetween: Lateinit<[LayoutDescription]> = .uninitialized
@@ -21,14 +25,16 @@ public struct LayoutCmdArgs: CmdArgs {
     }
 
     public enum LayoutDescription: String, CaseIterable, Equatable, Sendable {
-        case accordion, tiles
+        case accordion, scrolling, tiles
         case horizontal, vertical
-        case h_accordion, v_accordion, h_tiles, v_tiles
+        case h_scrolling, v_scrolling, h_accordion, v_accordion, h_tiles, v_tiles
         case tiling, floating
     }
 }
 
-private func parseToggleBetween(arg: String, _ nextArgs: inout [String]) -> Parsed<[LayoutCmdArgs.LayoutDescription]> {
+private func parseToggleBetween(arg: String, _ nextArgs: inout [String]) -> Parsed<
+    [LayoutCmdArgs.LayoutDescription]
+> {
     var args: [String] = nextArgs.allNextNonFlagArgs()
     args.insert(arg, at: 0)
 
@@ -37,7 +43,9 @@ private func parseToggleBetween(arg: String, _ nextArgs: inout [String]) -> Pars
         if let layout = arg.parseLayoutDescription() {
             result.append(layout)
         } else {
-            return .failure("Can't parse '\(arg)'\nPossible values: \(LayoutCmdArgs.LayoutDescription.unionLiteral)")
+            return .failure(
+                "Can't parse '\(arg)'\nPossible values: \(LayoutCmdArgs.LayoutDescription.unionLiteral)"
+            )
         }
     }
 

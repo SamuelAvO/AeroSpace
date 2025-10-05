@@ -19,7 +19,7 @@ import Foundation
     startUnixSocketServer()
     GlobalObserver.initObserver()
     Task {
-        Workspace.garbageCollectUnusedWorkspaces() // init workspaces
+        Workspace.garbageCollectUnusedWorkspaces()  // init workspaces
         _ = Workspace.all.first?.focusWorkspace()
         try await runRefreshSessionBlocking(.startup, layoutWorkspaces: false)
         try await runSession(.startup, .checkServerIsEnabledOrDie) {
@@ -34,9 +34,9 @@ private func smartLayoutAtStartup() {
     let workspace = focus.workspace
     let root = workspace.rootTilingContainer
     if root.children.count <= 3 {
-        root.layout = .tiles
+        root.layout = .scrolling  // .tiles // Always scrolling for now to test
     } else {
-        root.layout = .accordion
+        root.layout = .scrolling  // .accordion // Always scrolling for now to test
     }
 }
 
@@ -74,24 +74,24 @@ private func initServerArgs() {
         let current = args[index]
         index += 1
         switch current {
-            case "--version", "-v":
-                print("\(aeroSpaceAppVersion) \(gitHash)")
-                exit(0)
-            case "--config-path":
-                if let arg = args.getOrNil(atIndex: index) {
-                    _serverArgs.configLocation = arg
-                } else {
-                    cliError("Missing <path> in --config-path flag")
-                }
-                index += 1
-            case "--read-only": // todo rename to '--disabled' and unite with disabled feature
-                _serverArgs.isReadOnly = true
-            case "-NSDocumentRevisionsDebugMode" where isDebug:
-                // Skip Xcode CLI args.
-                // Usually it's '-NSDocumentRevisionsDebugMode NO'/'-NSDocumentRevisionsDebugMode YES'
-                while args.getOrNil(atIndex: index)?.starts(with: "-") == false { index += 1 }
-            default:
-                cliError("Unrecognized flag '\(args.first.orDie())'")
+        case "--version", "-v":
+            print("\(aeroSpaceAppVersion) \(gitHash)")
+            exit(0)
+        case "--config-path":
+            if let arg = args.getOrNil(atIndex: index) {
+                _serverArgs.configLocation = arg
+            } else {
+                cliError("Missing <path> in --config-path flag")
+            }
+            index += 1
+        case "--read-only":  // todo rename to '--disabled' and unite with disabled feature
+            _serverArgs.isReadOnly = true
+        case "-NSDocumentRevisionsDebugMode" where isDebug:
+            // Skip Xcode CLI args.
+            // Usually it's '-NSDocumentRevisionsDebugMode NO'/'-NSDocumentRevisionsDebugMode YES'
+            while args.getOrNil(atIndex: index)?.starts(with: "-") == false { index += 1 }
+        default:
+            cliError("Unrecognized flag '\(args.first.orDie())'")
         }
     }
     if let path = serverArgs.configLocation, !FileManager.default.fileExists(atPath: path) {

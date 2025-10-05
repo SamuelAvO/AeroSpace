@@ -50,10 +50,13 @@ extension TreeNode {
             lastAppliedLayoutVirtualRect = virtual
             switch container.layout {
             case .tiles:
-                try await container.layoutScrolling(
+                try await container.layoutTiles(
                     point, width: width, height: height, virtual: virtual, context)
             case .accordion:
                 try await container.layoutAccordion(
+                    point, width: width, height: height, virtual: virtual, context)
+            case .scrolling:
+                try await container.layoutScrolling(
                     point, width: width, height: height, virtual: virtual, context)
             }
         case .macosMinimizedWindowsContainer, .macosFullscreenWindowsContainer,
@@ -138,6 +141,7 @@ extension TilingContainer {
             // 3. Multiple children. Layout child in the middle
             // 4. Single child   let rawGap = gaps.inner.get(orientation).toDouble()
             let gap = rawGap - (i == 0 ? rawGap / 2 : 0) - (i == lastIndex ? rawGap / 2 : 0)
+
             try await child.layoutRecursive(
                 i == 0 ? point : point.addingOffset(orientation, rawGap / 2),
                 width: orientation == .h ? child.hWeight - gap : width,
@@ -173,11 +177,23 @@ extension TilingContainer {
         let gap = context.resolvedGaps.inner.get(orientation).toDouble()
 
         // Initial size, TODO Set this in settings
-        let defaultSize = ((orientation == .h ? width : height) * 0.4)
+        let defaultSize = ((orientation == .h ? width : height) * 0.333)
 
         var mruChildren = mostRecentChildren
+
+        for (i, child) in children.enumerated() {
+            let weight = child.getWeight(orientation)
+            if weight <= 1 {
+                child.setWeight(orientation, defaultSize)
+            } else if weight > (orientation == .h ? width : height) {
+                child.setWeight(orientation, (orientation == .h ? width : height))
+            }
+        }
+
         let sizes = children.map { child in
-            (orientation == .h ? child.hWeight : child.vWeight) + defaultSize
+            (orientation == .h
+                ? min(child.hWeight, width)
+                : min(child.vWeight, height))
         }
         print("sizes: \(sizes)")
 
@@ -187,29 +203,38 @@ extension TilingContainer {
         var offset: CGFloat = 0.0
 
         var item = mruChildren.next()
-        while item != nil {
+        var indexes: [Int] = Array(0...children.count - 1)
+        // mruIndex = item?.ownIndex ?? 0
+        var index = item?.ownIndex ?? indexes.first ?? -1
+        while index >= 0 {
             // TODO IMPORTANT navigate from: itemIndex < start ? start - 1 ... itemIndex : itemIndex > end ? end + 1 ... itemIndex
-            let itemIndex = item?.ownIndex ?? 0
-            let size = sizes[min(itemIndex, start)...max(itemIndex, end)].reduce(0, +)
-            start = min(start, itemIndex)
-            end = max(end, itemIndex)
+            indexes.remove(element: index)
+            let size = sizes[min(index, start)...max(index, end)].reduce(0, +)
+            start = min(start, index)
+            end = max(end, index)
             if size >= (orientation == .h ? width : height) {
-                if itemIndex < mruIndex {
+                if index < mruIndex {
                     offset = (orientation == .h ? width : height) - size
+                } else {
+                    offset = 0
                 }
                 print(
-                    "itemIndex: \(itemIndex) size: \(size) width: \(width) height: \(height) overflow!"
+                    "itemIndex: \(index) size: \(size) width: \(width) height: \(height) overflow!"
                 )
                 break
+            } else if size < (orientation == .h ? width : height) {
+                // Center align when not filling all space
+                offset = ((orientation == .h ? width : height) - size) / 2
             }
-            print("itemIndex: \(itemIndex) size: \(size)")
+            print("index: \(index) size: \(size)")
 
             item = mruChildren.next()
+            index = item?.ownIndex ?? indexes.first ?? -1
         }
 
         print("offset: \(offset) start: \(start), end: \(end)")
 
-        let padding = CGFloat(config.accordionPadding)
+        // let padding = CGFloat(config.accordionPadding)
 
         var virtualTopLeftCorner = topLeftCorner
 
@@ -218,17 +243,18 @@ extension TilingContainer {
             print("Adding visible item \(index)")
             let child = children[index]
             let size = sizes[index]
+            let maxOverflowSize = CGFloat(0)  // size / 3
 
-            if index < start {
-                virtualTopLeftCorner =
-                    orientation == .h
-                    ? topLeftCorner.addingXOffset(-size + 1)  // gap or -size + 1
-                    : topLeftCorner.addingYOffset(-size + 1)  // gap or -size + 1
-                point =
-                    orientation == .h
-                    ? layoutPoint.addingXOffset(-size + 1)  // gap or -size + 1
-                    : layoutPoint.addingYOffset(-size + 1)  // gap or -size + 1
-            }
+            // if index < start {
+            //     virtualTopLeftCorner =
+            //         orientation == .h
+            //         ? topLeftCorner.addingXOffset(0)  // gap or -size + 1
+            //         : topLeftCorner.addingYOffset(0)  // gap or -size + 1
+            //     point =
+            //         orientation == .h
+            //         ? layoutPoint.addingXOffset(0)  // gap or -size + 1
+            //         : layoutPoint.addingYOffset(0)  // gap or -size + 1
+            // }
             if index >= start && index <= end {
                 if index == start {
                     virtualTopLeftCorner = topLeftCorner
@@ -243,29 +269,63 @@ extension TilingContainer {
                     ? point.addingXOffset(offset) : point.addingYOffset(offset)
                 offset = size
             }
-            if index > end {
-                virtualTopLeftCorner =
-                    orientation == .h
-                    ? bottomRightCorner.addingXOffset(-1)  // -1 or -size
-                    : bottomRightCorner.addingYOffset(-1)  // -1 or -size
-                point =
-                    orientation == .h
-                    ? layoutPoint.addingXOffset(width - 1)  // -1 or -size
-                    : layoutPoint.addingYOffset(height - 1)  // -1 or -size
-            }
+            // if index > end {
+            //     virtualTopLeftCorner =
+            //         orientation == .h
+            //         ? bottomRightCorner.addingXOffset(-size)  // -1 or -size
+            //         : bottomRightCorner.addingYOffset(-size)  // -1 or -size
+            //     point =
+            //         orientation == .h
+            //         ? layoutPoint.addingXOffset(width - size)  // -1 or -size
+            //         : layoutPoint.addingYOffset(height - size)  // -1 or -size
+            // }
 
-            try await child.layoutRecursive(
-                point.addingOffset(orientation, gap / 2),
-                width: orientation == .h ? size - gap : width,
-                height: orientation == .v ? size - gap : height,
-                virtual: Rect(
-                    topLeftX: virtualTopLeftCorner.x,
-                    topLeftY: virtualTopLeftCorner.y,
-                    width: orientation == .h ? size : width,
-                    height: orientation == .v ? size : height,
-                ),
-                context,
-            )
+            if index < start || index > end && child is Window {
+                print("hiding window: \(index)")
+                // let corner: OptimalHideCorner = monitorToOptimalHideCorner[workspace.workspaceMonitor.rect.topLeftCorner] ?? .bottomRightCorner
+                try await (child as! MacWindow).hideInCorner(OptimalHideCorner.bottomLeftCorner)
+            } else {
+                let realGap =
+                    gap - (index == 0 ? gap / 2 : 0) - (index == children.count ? gap / 2 : 0)
+
+                // let (lPadding, rPadding): (CGFloat, CGFloat) =
+                //     switch index {
+                //     case 0 where children.count == 1: (0, 0)
+                //     case 0: (0, padding)
+                //     case children.indices.last: (padding, 0)
+                //     case mruIndex - 1: (0, 2 * padding)
+                //     case mruIndex + 1: (2 * padding, 0)
+                //     default: (padding, padding)
+                // }
+
+                try await child.layoutRecursive(
+                    CGPoint(
+                        x: orientation == .v
+                            ? point.x
+                            : min(
+                                max(point.x, layoutPoint.x - maxOverflowSize),
+                                layoutPoint.x + width - size + maxOverflowSize),
+                        y: orientation == .h
+                            ? point.y
+                            : min(
+                                max(point.y, layoutPoint.y - maxOverflowSize),
+                                layoutPoint.y + height - size + maxOverflowSize)
+                    ).addingOffset(orientation, index == 0 ? 0 : gap / 2),
+                    width: orientation == .h ? size - realGap : width,
+                    height: orientation == .v ? size - realGap : height,
+                    virtual: Rect(
+                        topLeftX: min(
+                            max(virtualTopLeftCorner.x, topLeftCorner.x - maxOverflowSize),
+                            bottomRightCorner.x - size + maxOverflowSize),
+                        topLeftY: min(
+                            max(virtualTopLeftCorner.y, topLeftCorner.y - maxOverflowSize),
+                            bottomRightCorner.y - size + maxOverflowSize),
+                        width: orientation == .h ? size : width,
+                        height: orientation == .v ? size : height,
+                    ),
+                    context,
+                )
+            }
         }
     }
 
