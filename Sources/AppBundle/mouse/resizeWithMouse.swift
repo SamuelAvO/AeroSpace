@@ -71,6 +71,12 @@ private func resizeWithMouse(_ window: Window) async throws {  // todo cover wit
             ?? window.closestParent(hasChildrenInDirection: .right, withLayout: .scrolling) ?? (
                 nil, nil
             )
+        let (sParent, sOwnIndex) =
+            (parent as! TilingContainer).layout == .scrolling
+            ? (parent as? TilingContainer, parent.ownIndex)
+            : (
+                nil, nil
+            )
         let table: [(CGFloat, TilingContainer?, Int?, Int?)] = [
             (lastAppliedLayoutRect.minX - rect.minX, lParent, 0, lOwnIndex),  // Horizontal, to the left of the window
             (
@@ -82,10 +88,16 @@ private func resizeWithMouse(_ window: Window) async throws {  // todo cover wit
                 rect.maxX - lastAppliedLayoutRect.maxX, rParent, rOwnIndex.map { $0 + 1 },
                 rParent?.children.count
             ),  // Horizontal, to the right of the window
+            (
+                rect.getDimension(sParent?.orientation ?? .h)
+                    - lastAppliedLayoutRect.getDimension(sParent?.orientation ?? .h), sParent,
+                sOwnIndex.map { $0 + 1 },
+                sParent?.children.count
+            ),  // Single scrolling window
         ]
         for (diff, parent, startIndex, pastTheEndIndex) in table {
             if let parent, let startIndex, let pastTheEndIndex,
-                pastTheEndIndex - startIndex > 0 && abs(diff) > 5
+                (pastTheEndIndex - startIndex > 0 || parent.layout != .tiles) && abs(diff) > 5
             {  // 5 pixels should be enough to fight with accumulated floating precision error
                 let orientation = parent.orientation
 
@@ -93,7 +105,8 @@ private func resizeWithMouse(_ window: Window) async throws {  // todo cover wit
                     .prefix(while: { $0 != parent })
                     .filter {
                         let parent = $0.parent as? TilingContainer
-                        return parent?.orientation == orientation && (parent?.layout == .tiles || parent?.layout == .scrolling)
+                        return parent?.orientation == orientation
+                            && (parent?.layout == .tiles || parent?.layout == .scrolling)
                     }
                     .forEach {
                         $0.setWeight(orientation, $0.getWeightBeforeResize(orientation) + diff)
