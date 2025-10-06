@@ -173,6 +173,7 @@ extension TilingContainer {
         let bottomRightCorner = virtual.bottomRightCorner
         let layoutPoint = point
         var point = point
+        let monitorCount = monitors.count
 
         let gap = context.resolvedGaps.inner.get(orientation).toDouble()
         var padding: CGFloat = CGFloat(config.accordionPadding)
@@ -247,7 +248,7 @@ extension TilingContainer {
             // print("Adding visible item \(index)")
             let child = children[index]
             let size = sizes[index]
-            let maxOverflowSize = CGFloat(0)  // size / 3
+            let maxOverflowSize = monitorCount > 1 ? CGFloat(0) : size  // size / 3
 
             // if index < start {
             //     virtualTopLeftCorner =
