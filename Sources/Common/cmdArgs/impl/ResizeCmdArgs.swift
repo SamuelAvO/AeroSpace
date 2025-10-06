@@ -62,7 +62,7 @@ private func parseUnits(arg: String, nextArgs: inout [String]) -> Parsed<ResizeC
         default: .success(.set(number))
         }
     } else if arg == "predefined" {
-        .success(.predefined([0.3333, 0.5, 0.6667, 1.0]))  // TODO make configurable (and also add hardcoded pixel size support?)
+        .success(.predefined([1 / 3, 0.5, 2 / 3, 1.0]))  // TODO make configurable (and also add hardcoded pixel size support?)
     } else {
         .failure("<number> argument must be a number")
     }
