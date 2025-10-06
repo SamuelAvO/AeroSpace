@@ -6,11 +6,13 @@ public struct ResizeCmdArgs: CmdArgs {
         allowInConfig: true,
         help: resize_help_generated,
         options: [
-            "--window-id": optionalWindowIdFlag(),
+            "--window-id": optionalWindowIdFlag()
         ],
         arguments: [
-            newArgParser(\.dimension, parseDimension, mandatoryArgPlaceholder: "(smart|smart-opposite|width|height)"),
-            newArgParser(\.units, parseUnits, mandatoryArgPlaceholder: "[+|-]<number>"),
+            newArgParser(
+                \.dimension, parseDimension,
+                mandatoryArgPlaceholder: "(smart|smart-opposite|width|height)"),
+            newArgParser(\.units, parseUnits, mandatoryArgPlaceholder: "[+|-]<number>|predefined"),
         ],
     )
 
@@ -38,6 +40,7 @@ public struct ResizeCmdArgs: CmdArgs {
         case set(UInt)
         case add(UInt)
         case subtract(UInt)
+        case predefined([Float])
     }
 }
 
@@ -45,17 +48,21 @@ public func parseResizeCmdArgs(_ args: [String]) -> ParsedCmd<ResizeCmdArgs> {
     parseSpecificCmdArgs(ResizeCmdArgs(rawArgs: args), args)
 }
 
-private func parseDimension(arg: String, nextArgs: inout [String]) -> Parsed<ResizeCmdArgs.Dimension> {
+private func parseDimension(arg: String, nextArgs: inout [String]) -> Parsed<
+    ResizeCmdArgs.Dimension
+> {
     parseEnum(arg, ResizeCmdArgs.Dimension.self)
 }
 
 private func parseUnits(arg: String, nextArgs: inout [String]) -> Parsed<ResizeCmdArgs.Units> {
     if let number = UInt(arg.removePrefix("+").removePrefix("-")) {
         switch true {
-            case arg.starts(with: "+"): .success(.add(number))
-            case arg.starts(with: "-"): .success(.subtract(number))
-            default: .success(.set(number))
+        case arg.starts(with: "+"): .success(.add(number))
+        case arg.starts(with: "-"): .success(.subtract(number))
+        default: .success(.set(number))
         }
+    } else if arg == "predefined" {
+        .success(.predefined([0.3333, 0.5, 0.6667, 1.0]))  // TODO make configurable (and also add hardcoded pixel size support?)
     } else {
         .failure("<number> argument must be a number")
     }

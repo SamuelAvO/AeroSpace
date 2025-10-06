@@ -50,12 +50,22 @@ struct ResizeCommand: Command {  // todo cover with tests
         }
         guard let orientation else { return false }
         guard let node else { return false }
-        let diff: CGFloat =
-            switch args.units.val {
-            case .set(let unit): CGFloat(unit) - node.getWeight(orientation)
-            case .add(let unit): CGFloat(unit)
-            case .subtract(let unit): -CGFloat(unit)
+        var diff: CGFloat = 0
+        switch args.units.val {
+        case .set(let unit): diff = CGFloat(unit) - node.getWeight(orientation)
+        case .add(let unit): diff = CGFloat(unit)
+        case .subtract(let unit): diff = -CGFloat(unit)
+        case .predefined(let units):
+            let parentSize: CGFloat = parent.getWeight(orientation)
+            let nodeSize = node.getWeight(orientation)
+            diff = (parentSize * CGFloat(units[0])) - nodeSize
+            for (i, unit) in units.enumerated() {
+                if nodeSize < parentSize * CGFloat(unit) {
+                    diff = (parentSize * CGFloat(unit)) - nodeSize
+                    break
+                }
             }
+        }
 
         if parent.layout == .tiles {
             guard let childDiff = diff.div(parent.children.count - 1) else { return false }
