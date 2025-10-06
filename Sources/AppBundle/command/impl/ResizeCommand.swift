@@ -60,7 +60,7 @@ struct ResizeCommand: Command {  // todo cover with tests
             let nodeSize = node.getWeight(orientation)
             diff = (parentSize * CGFloat(units[0])) - nodeSize
             for (i, unit) in units.enumerated() {
-                if nodeSize < parentSize * CGFloat(unit) {
+                if nodeSize + 1 < parentSize * CGFloat(unit) {
                     diff = (parentSize * CGFloat(unit)) - nodeSize
                     break
                 }
