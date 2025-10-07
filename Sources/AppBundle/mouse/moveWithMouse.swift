@@ -116,7 +116,7 @@ extension CGPoint {
                     (virtual ? $0.lastAppliedLayoutVirtualRect : $0.lastAppliedLayoutPhysicalRect)?
                         .contains(point) == true
                 })
-            case .scrolling:  // TODO, is this correct?
+            case .scrolling:
                 tree.children.first(where: {
                     (virtual ? $0.lastAppliedLayoutVirtualRect : $0.lastAppliedLayoutPhysicalRect)?
                         .contains(point) == true

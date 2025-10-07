@@ -34,9 +34,9 @@ private func smartLayoutAtStartup() {
     let workspace = focus.workspace
     let root = workspace.rootTilingContainer
     if root.children.count <= 3 {
-        root.layout = .scrolling  // .tiles // Always scrolling for now to test
+        root.layout = .tiles
     } else {
-        root.layout = .scrolling  // .accordion // Always scrolling for now to test
+        root.layout = .scrolling  // was .accordion using scrolling for now to test
     }
 }
 

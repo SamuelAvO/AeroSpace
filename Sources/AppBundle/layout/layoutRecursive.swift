@@ -174,6 +174,10 @@ extension TilingContainer {
         let layoutPoint = point
         var point = point
         let monitorCount = monitors.count
+        // let startMonitor = context.workspace.workspaceMonitor.findRelativeMonitor(
+        //     inDirection: orientation == .h ? .left : .up)
+        // let endMonitor = context.workspace.workspaceMonitor.findRelativeMonitor(
+        //     inDirection: orientation == .h ? .right : .down)
 
         let gap = context.resolvedGaps.inner.get(orientation).toDouble()
         var padding: CGFloat = CGFloat(config.accordionPadding)
@@ -248,7 +252,10 @@ extension TilingContainer {
             // print("Adding visible item \(index)")
             let child = children[index]
             let size = sizes[index]
-            let maxOverflowSize = monitorCount > 1 ? CGFloat(0) : size  // size / 3
+            // let maxOverflowStart = startMonitor?.index ?? -1 >= 0 ? CGFloat(0) : size  // size / 3
+            // let maxOverflowEnd = endMonitor?.index ?? -1 >= 0 ? CGFloat(0) : size  // size / 3
+            let maxOverflowStart = monitorCount > 1 ? CGFloat(0) : size  // size / 3
+            let maxOverflowEnd = monitorCount > 1 ? CGFloat(0) : size  // size / 3
 
             // if index < start {
             //     virtualTopLeftCorner =
@@ -285,54 +292,54 @@ extension TilingContainer {
             //         : layoutPoint.addingYOffset(height - size)  // -1 or -size
             // }
 
-            if index < start || index > end && child is Window {
-                // print("hiding window: \(index)")
-                // let corner: OptimalHideCorner = monitorToOptimalHideCorner[workspace.workspaceMonitor.rect.topLeftCorner] ?? .bottomRightCorner
-                try await (child as! MacWindow).hideInCorner(OptimalHideCorner.bottomLeftCorner)
-            } else {
-                var lPadding: CGFloat = gap / 2
-                var rPadding: CGFloat = gap / 2
-                padding = gap / 2  // enable this to disable padding for scrolling layout
+            // if index < start || index > end && child is Window {
+            //     // print("hiding window: \(index)")
+            //     // let corner: OptimalHideCorner = monitorToOptimalHideCorner[workspace.workspaceMonitor.rect.topLeftCorner] ?? .bottomRightCorner
+            //     try await (child as! MacWindow).hideInCorner(OptimalHideCorner.bottomLeftCorner)
+            // } else {
+            var lPadding: CGFloat = gap / 2
+            var rPadding: CGFloat = gap / 2
+            padding = gap / 2  // enable this to disable padding for scrolling layout
 
-                if index == 0 {
-                    lPadding = 0
-                } else if index == start {  // && index != offsetAt {
-                    lPadding = padding
-                }
-                if index == children.count - 1 {
-                    rPadding = 0
-                } else if index == end {  // && index != offsetAt {
-                    rPadding = padding
-                }
-
-                try await child.layoutRecursive(
-                    CGPoint(
-                        x: orientation == .v
-                            ? point.x
-                            : min(
-                                max(point.x, layoutPoint.x - maxOverflowSize),
-                                layoutPoint.x + width - size + maxOverflowSize),
-                        y: orientation == .h
-                            ? point.y
-                            : min(
-                                max(point.y, layoutPoint.y - maxOverflowSize),
-                                layoutPoint.y + height - size + maxOverflowSize)
-                    ).addingOffset(orientation, lPadding),
-                    width: orientation == .h ? size - lPadding - rPadding : width,
-                    height: orientation == .v ? size - lPadding - rPadding : height,
-                    virtual: Rect(
-                        topLeftX: min(
-                            max(virtualTopLeftCorner.x, topLeftCorner.x - maxOverflowSize),
-                            bottomRightCorner.x - size + maxOverflowSize),
-                        topLeftY: min(
-                            max(virtualTopLeftCorner.y, topLeftCorner.y - maxOverflowSize),
-                            bottomRightCorner.y - size + maxOverflowSize),
-                        width: orientation == .h ? size : width,
-                        height: orientation == .v ? size : height,
-                    ),
-                    context,
-                )
+            if index == 0 {
+                lPadding = 0
+            } else if index == start {  // && index != offsetAt {
+                lPadding = padding
             }
+            if index == children.count - 1 {
+                rPadding = 0
+            } else if index == end {  // && index != offsetAt {
+                rPadding = padding
+            }
+
+            try await child.layoutRecursive(
+                CGPoint(
+                    x: orientation == .v
+                        ? point.x
+                        : min(
+                            max(point.x, layoutPoint.x - maxOverflowStart),
+                            layoutPoint.x + width - size + maxOverflowEnd),
+                    y: orientation == .h
+                        ? point.y
+                        : min(
+                            max(point.y, layoutPoint.y - maxOverflowStart),
+                            layoutPoint.y + height - size + maxOverflowEnd)
+                ).addingOffset(orientation, lPadding),
+                width: orientation == .h ? size - lPadding - rPadding : width,
+                height: orientation == .v ? size - lPadding - rPadding : height,
+                virtual: Rect(
+                    topLeftX: min(
+                        max(virtualTopLeftCorner.x, topLeftCorner.x - maxOverflowStart),
+                        bottomRightCorner.x - size + maxOverflowEnd),
+                    topLeftY: min(
+                        max(virtualTopLeftCorner.y, topLeftCorner.y - maxOverflowStart),
+                        bottomRightCorner.y - size + maxOverflowEnd),
+                    width: orientation == .h ? size : width,
+                    height: orientation == .v ? size : height,
+                ),
+                context,
+            )
+            // }
         }
     }
 

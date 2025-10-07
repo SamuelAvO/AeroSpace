@@ -147,7 +147,7 @@ private let moveOutMacosUnconventionalWindow =
     prevRoot.unbindFromParent()
     // Force tiles layout
     _ = TilingContainer(
-        parent: workspace, adaptiveWeight: WEIGHT_AUTO, direction.orientation, .scrolling, index: 0)  // .scrolling for now to test, .tiles is the default
+        parent: workspace, adaptiveWeight: WEIGHT_AUTO, direction.orientation, .tiles, index: 0)
     check(prevRoot != workspace.rootTilingContainer)
     prevRoot.bind(to: workspace.rootTilingContainer, adaptiveWeight: WEIGHT_AUTO, index: 0)
     window.bind(

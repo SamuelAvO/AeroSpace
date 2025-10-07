@@ -52,23 +52,19 @@ private func resizeWithMouse(_ window: Window) async throws {  // todo cover wit
         guard let rect = try await window.getAxRect() else { return }
         guard let lastAppliedLayoutRect = window.lastAppliedLayoutPhysicalRect else { return }
         let (lParent, lOwnIndex) =
-            window.closestParent(hasChildrenInDirection: .left, withLayout: .tiles)
-            ?? window.closestParent(hasChildrenInDirection: .left, withLayout: .scrolling) ?? (
+            window.closestParent(hasChildrenInDirection: .left, withLayout: .tiles) ?? (
                 nil, nil
             )
         let (dParent, dOwnIndex) =
-            window.closestParent(hasChildrenInDirection: .down, withLayout: .tiles)
-            ?? window.closestParent(hasChildrenInDirection: .down, withLayout: .scrolling) ?? (
+            window.closestParent(hasChildrenInDirection: .down, withLayout: .tiles) ?? (
                 nil, nil
             )
         let (uParent, uOwnIndex) =
-            window.closestParent(hasChildrenInDirection: .up, withLayout: .tiles)
-            ?? window.closestParent(hasChildrenInDirection: .up, withLayout: .scrolling) ?? (
+            window.closestParent(hasChildrenInDirection: .up, withLayout: .tiles) ?? (
                 nil, nil
             )
         let (rParent, rOwnIndex) =
-            window.closestParent(hasChildrenInDirection: .right, withLayout: .tiles)
-            ?? window.closestParent(hasChildrenInDirection: .right, withLayout: .scrolling) ?? (
+            window.closestParent(hasChildrenInDirection: .right, withLayout: .tiles) ?? (
                 nil, nil
             )
         let (sParent, sOwnIndex) =
