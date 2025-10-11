@@ -58,10 +58,11 @@ struct ResizeCommand: Command {  // todo cover with tests
         case .predefined(let units):
             let parentSize: CGFloat = parent.getWeight(orientation)
             let nodeSize = node.getWeight(orientation)
-            diff = (parentSize * CGFloat(units[0])) - nodeSize
-            for (i, unit) in units.enumerated() {
-                if nodeSize + 1 < parentSize * CGFloat(unit) {
-                    diff = (parentSize * CGFloat(unit)) - nodeSize
+            let padding = CGFloat(config.accordionPadding)
+            diff = ((parentSize - padding) * CGFloat(units[0])) - nodeSize
+            for (_, unit) in units.enumerated() {
+                if nodeSize + 1 < (parentSize - padding) * CGFloat(unit) {
+                    diff = ((parentSize - padding) * CGFloat(unit)) - nodeSize
                     break
                 }
             }

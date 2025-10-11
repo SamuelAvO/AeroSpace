@@ -185,12 +185,12 @@ extension TilingContainer {
         // Initial size, TODO Set this in settings
         let defaultSize =
             ((orientation == .h ? width : height) > 2400
-                ? (orientation == .h ? width : height) * 0.33334
-                : (orientation == .h ? width : height) * 0.5)
+                ? ((orientation == .h ? width : height) - padding) * (1 / 3)
+                : ((orientation == .h ? width : height) - padding) * 0.5)
 
         var mruChildren = mostRecentChildren
 
-        for (i, child) in children.enumerated() {
+        for (_, child) in children.enumerated() {
             let weight = child.getWeight(orientation)
             if weight <= 1 {
                 child.setWeight(orientation, defaultSize)
@@ -210,7 +210,6 @@ extension TilingContainer {
         var start = children.count
         var end = 0
         var offset: CGFloat = 0.0
-        var offsetAt = -1
 
         var item = mruChildren.next()
         var indexes: [Int] = Array(0...children.count - 1)
@@ -222,13 +221,22 @@ extension TilingContainer {
             let size = sizes[min(index, start)...max(index, end)].reduce(0, +)
             start = min(start, index)
             end = max(end, index)
-            if size >= (orientation == .h ? width : height) - 1 {  // - padding {
+            if size >= (orientation == .h ? width : height) - 1 {
                 if index < mruIndex {
+                    // align to the right, half show this window by setting the offset
                     offset = (orientation == .h ? width : height) - size
+                    if end < children.count - 1 && start != end {
+                        offset -= padding
+                    }
                 } else {
+                    // Left align, no offset needed
                     offset = 0
+                    if start > 0 && start != end && padding > 0 {
+                        // More items to the left, show one more item with padding size
+                        offset = 0 - sizes[start - 1] + padding
+                        start = start - 1
+                    }
                 }
-                offsetAt = index
                 // print(
                 //     "itemIndex: \(index) size: \(size) width: \(width) height: \(height) overflow!"
                 // )
@@ -252,22 +260,22 @@ extension TilingContainer {
             // print("Adding visible item \(index)")
             let child = children[index]
             let size = sizes[index]
-            // let maxOverflowStart = startMonitor?.index ?? -1 >= 0 ? CGFloat(0) : size  // size / 3
-            // let maxOverflowEnd = endMonitor?.index ?? -1 >= 0 ? CGFloat(0) : size  // size / 3
+            // let maxOverflowStart = startMonitor?.index ?? -1 >= 0 ? CGFloat(0) : size // size / 3
+            // let maxOverflowEnd = endMonitor?.index ?? -1 >= 0 ? CGFloat(0) : size // size / 3
             let maxOverflowStart = monitorCount > 1 ? CGFloat(0) : size  // size / 3
             let maxOverflowEnd = monitorCount > 1 ? CGFloat(0) : size  // size / 3
 
-            // if index < start {
-            //     virtualTopLeftCorner =
-            //         orientation == .h
-            //         ? topLeftCorner.addingXOffset(0)  // gap or -size + 1
-            //         : topLeftCorner.addingYOffset(0)  // gap or -size + 1
-            //     point =
-            //         orientation == .h
-            //         ? layoutPoint.addingXOffset(0)  // gap or -size + 1
-            //         : layoutPoint.addingYOffset(0)  // gap or -size + 1
-            // }
-            if index >= start && index <= end {
+            if index < start {
+                virtualTopLeftCorner =
+                    orientation == .h
+                    ? topLeftCorner.addingXOffset(-size)  // gap or -size + 1
+                    : topLeftCorner.addingYOffset(-size)  // gap or -size + 1
+                point =
+                    orientation == .h
+                    ? layoutPoint.addingXOffset(-size)  // gap or -size + 1
+                    : layoutPoint.addingYOffset(-size)  // gap or -size + 1
+            }
+            if index >= start {  // && index <= end {
                 if index == start {
                     virtualTopLeftCorner = topLeftCorner
                     point = layoutPoint
