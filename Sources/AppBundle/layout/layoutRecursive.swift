@@ -208,12 +208,12 @@ extension TilingContainer {
         // print("sizes: \(sizes)")
 
         // let lastIndex = children.indices.last
-        var start = children.count
+        var start = children.count - 1
         var end = 0
         var offset: CGFloat = 0.0
 
         var item = mruChildren.next()
-        var indexes: [Int] = [0, children.count]  // Array(0...children.count - 1)
+        var indexes: [Int] = [0, children.count - 1]  // Array(0...children.count - 1)
         // mruIndex = item?.ownIndex ?? 0
         var index = item?.ownIndex ?? indexes.first ?? -1
         while index >= 0 {
