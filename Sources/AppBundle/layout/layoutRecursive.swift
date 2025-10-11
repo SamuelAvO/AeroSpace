@@ -174,6 +174,7 @@ extension TilingContainer {
         let layoutPoint = point
         var point = point
         let monitorCount = monitors.count
+        let orientationSize = (orientation == .h ? width : height)
         // let startMonitor = context.workspace.workspaceMonitor.findRelativeMonitor(
         //     inDirection: orientation == .h ? .left : .up)
         // let endMonitor = context.workspace.workspaceMonitor.findRelativeMonitor(
@@ -184,9 +185,9 @@ extension TilingContainer {
 
         // Initial size, TODO Set this in settings
         let defaultSize =
-            ((orientation == .h ? width : height) > 2400
-                ? ((orientation == .h ? width : height) - padding) * (1 / 3)
-                : ((orientation == .h ? width : height) - padding) * 0.5)
+            (orientationSize > 2400
+                ? (orientationSize - padding) * (1 / 3)
+                : (orientationSize - padding) * 0.5)
 
         var mruChildren = mostRecentChildren
 
@@ -194,8 +195,8 @@ extension TilingContainer {
             let weight = child.getWeight(orientation)
             if weight <= 1 {
                 child.setWeight(orientation, defaultSize)
-            } else if weight > (orientation == .h ? width : height) {
-                child.setWeight(orientation, (orientation == .h ? width : height))
+            } else if weight > orientationSize {
+                child.setWeight(orientation, orientationSize)
             }
         }
 
@@ -212,26 +213,31 @@ extension TilingContainer {
         var offset: CGFloat = 0.0
 
         var item = mruChildren.next()
-        var indexes: [Int] = Array(0...children.count - 1)
+        var indexes: [Int] = [0, children.count]  // Array(0...children.count - 1)
         // mruIndex = item?.ownIndex ?? 0
         var index = item?.ownIndex ?? indexes.first ?? -1
         while index >= 0 {
             // TODO IMPORTANT navigate from: itemIndex < start ? start - 1 ... itemIndex : itemIndex > end ? end + 1 ... itemIndex
             indexes.remove(element: index)
             let size = sizes[min(index, start)...max(index, end)].reduce(0, +)
+
             start = min(start, index)
             end = max(end, index)
-            if size >= (orientation == .h ? width : height) - 1 {
+            if size >= orientationSize - 1 {
                 if index < mruIndex {
                     // align to the right, half show this window by setting the offset
-                    offset = (orientation == .h ? width : height) - size
-                    if end < children.count - 1 && start != end {
+                    offset = orientationSize - size
+                    if end < children.count - 1 && start != end
+                        && sizes[end] + padding <= orientationSize
+                    {
                         offset -= padding
                     }
                 } else {
                     // Left align, no offset needed
                     offset = 0
-                    if start > 0 && start != end && padding > 0 {
+                    if start > 0 && start != end && padding > 0
+                        && sizes[start] + padding <= orientationSize
+                    {
                         // More items to the left, show one more item with padding size
                         offset = 0 - sizes[start - 1] + padding
                         start = start - 1
@@ -241,9 +247,9 @@ extension TilingContainer {
                 //     "itemIndex: \(index) size: \(size) width: \(width) height: \(height) overflow!"
                 // )
                 break
-            } else if size < (orientation == .h ? width : height) {
+            } else if size < orientationSize {
                 // Center align when not filling all space
-                offset = ((orientation == .h ? width : height) - size) / 2
+                offset = (orientationSize - size) / 2
             }
             // print("index: \(index) size: \(size)")
 
