@@ -173,12 +173,7 @@ extension TilingContainer {
         let bottomRightCorner = virtual.bottomRightCorner
         let layoutPoint = point
         var point = point
-        let monitorCount = monitors.count
         let orientationSize = (orientation == .h ? width : height)
-        // let startMonitor = context.workspace.workspaceMonitor.findRelativeMonitor(
-        //     inDirection: orientation == .h ? .left : .up)
-        // let endMonitor = context.workspace.workspaceMonitor.findRelativeMonitor(
-        //     inDirection: orientation == .h ? .right : .down)
 
         let gap = context.resolvedGaps.inner.get(orientation).toDouble()
         var padding: CGFloat = CGFloat(config.accordionPadding)
@@ -205,16 +200,13 @@ extension TilingContainer {
                 ? min(child.hWeight, width)
                 : min(child.vWeight, height))
         }
-        // print("sizes: \(sizes)")
 
-        // let lastIndex = children.indices.last
         var start = children.count - 1
         var end = 0
         var offset: CGFloat = 0.0
 
         var item = mruChildren.next()
-        var indexes: [Int] = [0, children.count - 1]  // Array(0...children.count - 1)
-        // mruIndex = item?.ownIndex ?? 0
+        var indexes: [Int] = [0, children.count - 1]
         var index = item?.ownIndex ?? indexes.first ?? -1
         while index >= 0 {
             // TODO IMPORTANT navigate from: itemIndex < start ? start - 1 ... itemIndex : itemIndex > end ? end + 1 ... itemIndex
@@ -243,33 +235,23 @@ extension TilingContainer {
                         start = start - 1
                     }
                 }
-                // print(
-                //     "itemIndex: \(index) size: \(size) width: \(width) height: \(height) overflow!"
-                // )
                 break
             } else if size < orientationSize {
                 // Center align when not filling all space
                 offset = (orientationSize - size) / 2
             }
-            // print("index: \(index) size: \(size)")
 
             item = mruChildren.next()
             index = item?.ownIndex ?? indexes.first ?? -1
         }
 
-        // print("offset: \(offset) start: \(start), end: \(end)")
-
         var virtualTopLeftCorner = topLeftCorner
 
-        // for index in stride(from: start, through: end, by: 1) {
         for index in stride(from: 0, through: children.count - 1, by: 1) {
-            // print("Adding visible item \(index)")
             let child = children[index]
             let size = sizes[index]
-            // let maxOverflowStart = startMonitor?.index ?? -1 >= 0 ? CGFloat(0) : size // size / 3
-            // let maxOverflowEnd = endMonitor?.index ?? -1 >= 0 ? CGFloat(0) : size // size / 3
-            let maxOverflowStart = monitorCount > 1 ? CGFloat(0) : size  // size / 3
-            let maxOverflowEnd = monitorCount > 1 ? CGFloat(0) : size  // size / 3
+            let maxOverflowStart = monitors.count > 1 ? CGFloat(0) : size  // size / 3
+            let maxOverflowEnd = monitors.count > 1 ? CGFloat(0) : size  // size / 3
 
             if index < start {
                 virtualTopLeftCorner =
@@ -281,7 +263,7 @@ extension TilingContainer {
                     ? layoutPoint.addingXOffset(-size)  // gap or -size + 1
                     : layoutPoint.addingYOffset(-size)  // gap or -size + 1
             }
-            if index >= start {  // && index <= end {
+            if index >= start {
                 if index == start {
                     virtualTopLeftCorner = topLeftCorner
                     point = layoutPoint
@@ -295,34 +277,18 @@ extension TilingContainer {
                     ? point.addingXOffset(offset) : point.addingYOffset(offset)
                 offset = size
             }
-            // if index > end {
-            //     virtualTopLeftCorner =
-            //         orientation == .h
-            //         ? bottomRightCorner.addingXOffset(-size)  // -1 or -size
-            //         : bottomRightCorner.addingYOffset(-size)  // -1 or -size
-            //     point =
-            //         orientation == .h
-            //         ? layoutPoint.addingXOffset(width - size)  // -1 or -size
-            //         : layoutPoint.addingYOffset(height - size)  // -1 or -size
-            // }
-
-            // if index < start || index > end && child is Window {
-            //     // print("hiding window: \(index)")
-            //     // let corner: OptimalHideCorner = monitorToOptimalHideCorner[workspace.workspaceMonitor.rect.topLeftCorner] ?? .bottomRightCorner
-            //     try await (child as! MacWindow).hideInCorner(OptimalHideCorner.bottomLeftCorner)
-            // } else {
             var lPadding: CGFloat = gap / 2
             var rPadding: CGFloat = gap / 2
             padding = gap / 2  // enable this to disable padding for scrolling layout
 
             if index == 0 {
                 lPadding = 0
-            } else if index == start {  // && index != offsetAt {
+            } else if index == start {
                 lPadding = padding
             }
             if index == children.count - 1 {
                 rPadding = 0
-            } else if index == end {  // && index != offsetAt {
+            } else if index == end {
                 rPadding = padding
             }
 
@@ -353,7 +319,6 @@ extension TilingContainer {
                 ),
                 context,
             )
-            // }
         }
     }
 
