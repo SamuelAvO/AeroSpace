@@ -168,23 +168,21 @@ extension TilingContainer {
     fileprivate func layoutScrolling(
         _ point: CGPoint, width: CGFloat, height: CGFloat, virtual: Rect, _ context: LayoutContext
     ) async throws {
-        guard let mruIndex: Int = mostRecentChild?.ownIndex else { return }
         let topLeftCorner = virtual.topLeftCorner
+        var virtualTopLeftCorner = topLeftCorner
+        var virtualPoint = point
         let bottomRightCorner = virtual.bottomRightCorner
-        let layoutPoint = point
-        var point = point
+        let startPoint = point
         let orientationSize = (orientation == .h ? width : height)
 
         let gap = context.resolvedGaps.inner.get(orientation).toDouble()
-        var padding: CGFloat = CGFloat(config.accordionPadding)
+        let padding: CGFloat = CGFloat(config.accordionPadding)
 
         // Initial size, TODO Set this in settings
         let defaultSize =
             (orientationSize > 2400
                 ? (orientationSize - padding) * (1 / 3)
                 : (orientationSize - padding) * 0.5)
-
-        var mruChildren = mostRecentChildren
 
         for (_, child) in children.enumerated() {
             let weight = child.getWeight(orientation)
@@ -194,6 +192,106 @@ extension TilingContainer {
                 child.setWeight(orientation, orientationSize)
             }
         }
+
+        let sizes = children.map { child in
+            (orientation == .h
+                ? min(child.hWeight, width)
+                : min(child.vWeight, height))
+        }
+
+        let position = calcScrollingPosition(width, height)
+        var currentOffset = position.offset
+
+        for index in stride(from: 0, through: children.count - 1, by: 1) {
+            let child = children[index]
+            let size = sizes[index]
+            let maxOverflowStart = monitors.count > 1 ? CGFloat(0) : size  // size / 3
+            let maxOverflowEnd = monitors.count > 1 ? CGFloat(0) : size  // size / 3
+
+            if index < position.start {
+                virtualTopLeftCorner =
+                    orientation == .h
+                    ? topLeftCorner.addingXOffset(-size)  // gap or -size + 1
+                    : topLeftCorner.addingYOffset(-size)  // gap or -size + 1
+                virtualPoint =
+                    orientation == .h
+                    ? startPoint.addingXOffset(-size)  // gap or -size + 1
+                    : startPoint.addingYOffset(-size)  // gap or -size + 1
+            }
+            if index >= position.start {
+                if index == position.start {
+                    virtualTopLeftCorner = topLeftCorner
+                    virtualPoint = startPoint
+                }
+                virtualTopLeftCorner =
+                    orientation == .h
+                    ? virtualTopLeftCorner.addingXOffset(currentOffset)
+                    : virtualTopLeftCorner.addingYOffset(currentOffset)
+                virtualPoint =
+                    orientation == .h
+                    ? virtualPoint.addingXOffset(currentOffset)
+                    : virtualPoint.addingYOffset(currentOffset)
+                currentOffset = size
+            }
+            var lGap: CGFloat = gap / 2
+            var rGap: CGFloat = gap / 2
+            let childGap = gap / 2  // enable this to disable childGap for scrolling layout
+
+            if index == 0 {
+                lGap = 0
+            } else if index == position.start {
+                lGap = childGap
+            }
+            if index == children.count - 1 {
+                rGap = 0
+            } else if index == position.end {
+                rGap = childGap
+            }
+
+            try await child.layoutRecursive(
+                CGPoint(
+                    x: orientation == .v
+                        ? virtualPoint.x
+                        : min(
+                            max(virtualPoint.x, startPoint.x - maxOverflowStart),
+                            startPoint.x + width - size + maxOverflowEnd),
+                    y: orientation == .h
+                        ? virtualPoint.y
+                        : min(
+                            max(virtualPoint.y, startPoint.y - maxOverflowStart),
+                            startPoint.y + height - size + maxOverflowEnd)
+                ).addingOffset(orientation, lGap),
+                width: orientation == .h ? size - lGap - rGap : width,
+                height: orientation == .v ? size - lGap - rGap : height,
+                virtual: Rect(
+                    topLeftX: min(
+                        max(virtualTopLeftCorner.x, topLeftCorner.x - maxOverflowStart),
+                        bottomRightCorner.x - size + maxOverflowEnd),
+                    topLeftY: min(
+                        max(virtualTopLeftCorner.y, topLeftCorner.y - maxOverflowStart),
+                        bottomRightCorner.y - size + maxOverflowEnd),
+                    width: orientation == .h ? size : width,
+                    height: orientation == .v ? size : height,
+                ),
+                context,
+            )
+        }
+    }
+
+    struct ScrollingPosition {
+        let start: Int
+        let end: Int
+        let offset: CGFloat
+    }
+
+    @MainActor
+    fileprivate func calcScrollingPosition(
+        _ width: CGFloat, _ height: CGFloat
+    ) -> ScrollingPosition {
+        let mruIndex: Int = mostRecentChild?.ownIndex ?? 0
+        let orientationSize = (orientation == .h ? width : height)
+        let padding: CGFloat = CGFloat(config.accordionPadding)
+        var mruChildren = mostRecentChildren
 
         let sizes = children.map { child in
             (orientation == .h
@@ -244,82 +342,7 @@ extension TilingContainer {
             item = mruChildren.next()
             index = item?.ownIndex ?? indexes.first ?? -1
         }
-
-        var virtualTopLeftCorner = topLeftCorner
-
-        for index in stride(from: 0, through: children.count - 1, by: 1) {
-            let child = children[index]
-            let size = sizes[index]
-            let maxOverflowStart = monitors.count > 1 ? CGFloat(0) : size  // size / 3
-            let maxOverflowEnd = monitors.count > 1 ? CGFloat(0) : size  // size / 3
-
-            if index < start {
-                virtualTopLeftCorner =
-                    orientation == .h
-                    ? topLeftCorner.addingXOffset(-size)  // gap or -size + 1
-                    : topLeftCorner.addingYOffset(-size)  // gap or -size + 1
-                point =
-                    orientation == .h
-                    ? layoutPoint.addingXOffset(-size)  // gap or -size + 1
-                    : layoutPoint.addingYOffset(-size)  // gap or -size + 1
-            }
-            if index >= start {
-                if index == start {
-                    virtualTopLeftCorner = topLeftCorner
-                    point = layoutPoint
-                }
-                virtualTopLeftCorner =
-                    orientation == .h
-                    ? virtualTopLeftCorner.addingXOffset(offset)
-                    : virtualTopLeftCorner.addingYOffset(offset)
-                point =
-                    orientation == .h
-                    ? point.addingXOffset(offset) : point.addingYOffset(offset)
-                offset = size
-            }
-            var lPadding: CGFloat = gap / 2
-            var rPadding: CGFloat = gap / 2
-            padding = gap / 2  // enable this to disable padding for scrolling layout
-
-            if index == 0 {
-                lPadding = 0
-            } else if index == start {
-                lPadding = padding
-            }
-            if index == children.count - 1 {
-                rPadding = 0
-            } else if index == end {
-                rPadding = padding
-            }
-
-            try await child.layoutRecursive(
-                CGPoint(
-                    x: orientation == .v
-                        ? point.x
-                        : min(
-                            max(point.x, layoutPoint.x - maxOverflowStart),
-                            layoutPoint.x + width - size + maxOverflowEnd),
-                    y: orientation == .h
-                        ? point.y
-                        : min(
-                            max(point.y, layoutPoint.y - maxOverflowStart),
-                            layoutPoint.y + height - size + maxOverflowEnd)
-                ).addingOffset(orientation, lPadding),
-                width: orientation == .h ? size - lPadding - rPadding : width,
-                height: orientation == .v ? size - lPadding - rPadding : height,
-                virtual: Rect(
-                    topLeftX: min(
-                        max(virtualTopLeftCorner.x, topLeftCorner.x - maxOverflowStart),
-                        bottomRightCorner.x - size + maxOverflowEnd),
-                    topLeftY: min(
-                        max(virtualTopLeftCorner.y, topLeftCorner.y - maxOverflowStart),
-                        bottomRightCorner.y - size + maxOverflowEnd),
-                    width: orientation == .h ? size : width,
-                    height: orientation == .v ? size : height,
-                ),
-                context,
-            )
-        }
+        return ScrollingPosition(start: start, end: end, offset: offset)
     }
 
     @MainActor
