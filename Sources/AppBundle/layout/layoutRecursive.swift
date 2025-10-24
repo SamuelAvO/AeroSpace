@@ -173,38 +173,15 @@ extension TilingContainer {
         var virtualPoint = point
         let bottomRightCorner = virtual.bottomRightCorner
         let startPoint = point
-        let orientationSize = (orientation == .h ? width : height)
-
         let gap = context.resolvedGaps.inner.get(orientation).toDouble()
-        let padding: CGFloat = CGFloat(config.accordionPadding)
 
-        // Initial size, TODO Set this in settings
-        let defaultSize =
-            (orientationSize > 2400
-                ? (orientationSize - padding) * (1 / 3)
-                : (orientationSize - padding) * 0.5)
-
-        for (_, child) in children.enumerated() {
-            let weight = child.getWeight(orientation)
-            if weight <= 1 {
-                child.setWeight(orientation, defaultSize)
-            } else if weight > orientationSize {
-                child.setWeight(orientation, orientationSize)
-            }
-        }
-
-        let sizes = children.map { child in
-            (orientation == .h
-                ? min(child.hWeight, width)
-                : min(child.vWeight, height))
-        }
-
+        setScrollingWindowWeight(width, height)
         let position = calcScrollingPosition(width, height)
         var currentOffset = position.offset
 
         for index in stride(from: 0, through: children.count - 1, by: 1) {
             let child = children[index]
-            let size = sizes[index]
+            let size = position.sizes[index]
             let maxOverflowStart = monitors.count > 1 ? CGFloat(0) : size  // size / 3
             let maxOverflowEnd = monitors.count > 1 ? CGFloat(0) : size  // size / 3
 
@@ -233,20 +210,8 @@ extension TilingContainer {
                     : virtualPoint.addingYOffset(currentOffset)
                 currentOffset = size
             }
-            var lGap: CGFloat = gap / 2
-            var rGap: CGFloat = gap / 2
-            let childGap = gap / 2  // enable this to disable childGap for scrolling layout
-
-            if index == 0 {
-                lGap = 0
-            } else if index == position.start {
-                lGap = childGap
-            }
-            if index == children.count - 1 {
-                rGap = 0
-            } else if index == position.end {
-                rGap = childGap
-            }
+            let lGap: CGFloat = index == 0 ? 0 : gap / 2
+            let rGap: CGFloat = index == children.count - 1 ? 0 : gap / 2
 
             try await child.layoutRecursive(
                 CGPoint(
@@ -282,6 +247,30 @@ extension TilingContainer {
         let start: Int
         let end: Int
         let offset: CGFloat
+        let sizes: [CGFloat]
+    }
+
+    @MainActor
+    fileprivate func setScrollingWindowWeight(
+        _ width: CGFloat, _ height: CGFloat
+    ) {
+        let orientationSize = (orientation == .h ? width : height)
+        let padding: CGFloat = CGFloat(config.accordionPadding)
+
+        // Initial size, TODO Set this in settings
+        let defaultSize =
+            (orientationSize > 2400
+                ? (orientationSize - padding) * (1 / 3)
+                : (orientationSize - padding) * 0.5)
+
+        for (_, child) in children.enumerated() {
+            let weight = child.getWeight(orientation)
+            if weight <= 1 {
+                child.setWeight(orientation, defaultSize)
+            } else if weight > orientationSize {
+                child.setWeight(orientation, orientationSize)
+            }
+        }
     }
 
     @MainActor
@@ -342,7 +331,7 @@ extension TilingContainer {
             item = mruChildren.next()
             index = item?.ownIndex ?? indexes.first ?? -1
         }
-        return ScrollingPosition(start: start, end: end, offset: offset)
+        return ScrollingPosition(start: start, end: end, offset: offset, sizes: sizes)
     }
 
     @MainActor
