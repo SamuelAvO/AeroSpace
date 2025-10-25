@@ -168,6 +168,9 @@ extension TilingContainer {
     fileprivate func layoutScrolling(
         _ point: CGPoint, width: CGFloat, height: CGFloat, virtual: Rect, _ context: LayoutContext
     ) async throws {
+
+        guard !children.isEmpty else { return }
+
         let topLeftCorner = virtual.topLeftCorner
         var virtualTopLeftCorner = topLeftCorner
         var virtualPoint = point
