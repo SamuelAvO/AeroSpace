@@ -45,7 +45,7 @@ private func smartLayoutAtStartup() {
     if root.children.count <= 3 {
         root.layout = .tiles
     } else {
-        root.layout = .scrolling  // was .accordion using scrolling for now to test
+        root.layout = .accordion
     }
 }
 

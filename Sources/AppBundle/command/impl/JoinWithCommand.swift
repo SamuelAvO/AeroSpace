@@ -20,15 +20,13 @@ struct JoinWithCommand: Command {
             parent: parent,
             adaptiveWeight: prevBinding.adaptiveWeight,
             parent.orientation.opposite,
-            .tiles,  // TODO add scrolling here to test?
+            .tiles,
             index: prevBinding.index,
         )
         currentWindow.unbindFromParent()
 
         joinWithTarget.bind(to: newParent, adaptiveWeight: WEIGHT_AUTO, index: 0)
-        currentWindow.bind(
-            to: newParent, adaptiveWeight: WEIGHT_AUTO,
-            index: direction.isPositive ? 0 : INDEX_BIND_LAST)
+        currentWindow.bind(to: newParent, adaptiveWeight: WEIGHT_AUTO, index: direction.isPositive ? 0 : INDEX_BIND_LAST)
         return true
     }
 }
