@@ -1,7 +1,6 @@
+@testable import AppBundle
 import Common
 import XCTest
-
-@testable import AppBundle
 
 @MainActor
 final class MoveCommandTest: XCTestCase {
@@ -36,7 +35,7 @@ final class MoveCommandTest: XCTestCase {
                 .h_tiles([
                     .window(1),
                     .h_tiles([
-                        .window(2)
+                        .window(2),
                     ]),
                 ]),
             ]),
@@ -113,15 +112,14 @@ final class MoveCommandTest: XCTestCase {
             TestWindow.new(id: 3, parent: $0)
         }
 
-        let result = try await MoveCommand(args: MoveCmdArgs(rawArgs: [], .up)).run(
-            .defaultEnv, .emptyStdin)
+        let result = try await MoveCommand(args: MoveCmdArgs(rawArgs: [], .up)).run(.defaultEnv, .emptyStdin)
         assertEquals(
             workspace.layoutDescription,
             .workspace([
                 .v_tiles([
                     .window(2),
                     .h_tiles([.window(1), .window(3)]),
-                ])
+                ]),
             ]),
         )
         assertEquals(result.exitCode, 0)
@@ -135,12 +133,11 @@ final class MoveCommandTest: XCTestCase {
             TestWindow.new(id: 3, parent: $0)
         }
 
-        let result = try await parseCommand("move --boundaries-action stop left").cmdOrDie.run(
-            .defaultEnv, .emptyStdin)
+        let result = try await parseCommand("move --boundaries-action stop left").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(
             workspace.layoutDescription,
             .workspace([
-                .h_tiles([.window(1), .window(2), .window(3)])
+                .h_tiles([.window(1), .window(2), .window(3)]),
             ]),
         )
         assertEquals(result.exitCode, 0)
@@ -154,12 +151,11 @@ final class MoveCommandTest: XCTestCase {
             TestWindow.new(id: 3, parent: $0)
         }
 
-        let result = try await parseCommand("move --boundaries-action stop up").cmdOrDie.run(
-            .defaultEnv, .emptyStdin)
+        let result = try await parseCommand("move --boundaries-action stop up").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(
             workspace.layoutDescription,
             .workspace([
-                .h_tiles([.window(1), .window(2), .window(3)])
+                .h_tiles([.window(1), .window(2), .window(3)]),
             ]),
         )
         assertEquals(result.exitCode, 0)
@@ -173,12 +169,11 @@ final class MoveCommandTest: XCTestCase {
             TestWindow.new(id: 3, parent: $0)
         }
 
-        let result = try await parseCommand("move --boundaries-action stop left").cmdOrDie.run(
-            .defaultEnv, .emptyStdin)
+        let result = try await parseCommand("move --boundaries-action stop left").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(
             workspace.layoutDescription,
             .workspace([
-                .h_tiles([.window(2), .window(1), .window(3)])
+                .h_tiles([.window(2), .window(1), .window(3)]),
             ]),
         )
         assertEquals(result.exitCode, 0)
@@ -194,12 +189,11 @@ final class MoveCommandTest: XCTestCase {
             }
         }
 
-        let result = try await parseCommand("move --boundaries-action stop right").cmdOrDie.run(
-            .defaultEnv, .emptyStdin)
+        let result = try await parseCommand("move --boundaries-action stop right").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(
             workspace.layoutDescription,
             .workspace([
-                .h_tiles([.window(1), .v_tiles([.window(3)]), .window(2)])
+                .h_tiles([.window(1), .v_tiles([.window(3)]), .window(2)]),
             ]),
         )
         assertEquals(result.exitCode, 0)
@@ -213,12 +207,11 @@ final class MoveCommandTest: XCTestCase {
             TestWindow.new(id: 3, parent: $0)
         }
 
-        let result = try await parseCommand("move --boundaries-action fail left").cmdOrDie.run(
-            .defaultEnv, .emptyStdin)
+        let result = try await parseCommand("move --boundaries-action fail left").cmdOrDie.run(.defaultEnv, .emptyStdin)
         assertEquals(
             workspace.layoutDescription,
             .workspace([
-                .h_tiles([.window(1), .window(2), .window(3)])
+                .h_tiles([.window(1), .window(2), .window(3)]),
             ]),
         )
         assertEquals(result.exitCode, 1)
@@ -290,27 +283,27 @@ final class MoveCommandTest: XCTestCase {
 extension TreeNode {
     var layoutDescription: LayoutDescription {
         return switch nodeCases {
-        case .window(let window): .window(window.windowId)
-        case .workspace(let workspace): .workspace(workspace.children.map(\.layoutDescription))
-        case .macosMinimizedWindowsContainer: .macosMinimized
-        case .macosFullscreenWindowsContainer: .macosFullscreen
-        case .macosHiddenAppsWindowsContainer: .macosHiddeAppWindow
-        case .macosPopupWindowsContainer: .macosPopupWindowsContainer
-        case .tilingContainer(let container):
-            switch container.layout {
-            case .tiles:
-                container.orientation == .h
-                    ? .h_tiles(container.children.map(\.layoutDescription))
-                    : .v_tiles(container.children.map(\.layoutDescription))
-            case .scrolling:
-                container.orientation == .h
-                    ? .h_scrolling(container.children.map(\.layoutDescription))
-                    : .v_scrolling(container.children.map(\.layoutDescription))
-            case .accordion:
-                container.orientation == .h
-                    ? .h_accordion(container.children.map(\.layoutDescription))
-                    : .v_accordion(container.children.map(\.layoutDescription))
-            }
+            case .window(let window): .window(window.windowId)
+            case .workspace(let workspace): .workspace(workspace.children.map(\.layoutDescription))
+            case .macosMinimizedWindowsContainer: .macosMinimized
+            case .macosFullscreenWindowsContainer: .macosFullscreen
+            case .macosHiddenAppsWindowsContainer: .macosHiddeAppWindow
+            case .macosPopupWindowsContainer: .macosPopupWindowsContainer
+            case .tilingContainer(let container):
+                switch container.layout {
+                    case .tiles:
+                        container.orientation == .h
+                            ? .h_tiles(container.children.map(\.layoutDescription))
+                            : .v_tiles(container.children.map(\.layoutDescription))
+                    case .scrolling:
+                        container.orientation == .h
+                            ? .h_scrolling(container.children.map(\.layoutDescription))
+                            : .v_scrolling(container.children.map(\.layoutDescription))
+                    case .accordion:
+                        container.orientation == .h
+                            ? .h_accordion(container.children.map(\.layoutDescription))
+                            : .v_accordion(container.children.map(\.layoutDescription))
+                }
         }
     }
 }
