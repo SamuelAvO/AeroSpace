@@ -5,7 +5,7 @@ import SwiftUI
 private let iconSize = CGSize(width: 50, height: 50)
 private let textSize = CGSize(width: 440, height: 110)
 
-public class SecureInputPanel: NSPanelHud {
+public final class SecureInputPanel: NSPanelHud {
     @MainActor public static var shared: SecureInputPanel = SecureInputPanel()
     private var hostingView = NSHostingView(rootView: SecureInputView())
 
@@ -15,9 +15,9 @@ public class SecureInputPanel: NSPanelHud {
 
     @MainActor
     public func refresh() {
-        if isVisible && !TrayMenuModel.shared.isEnabled {
-            close()
-        } else if IsSecureEventInputEnabled() {
+        if let activeMode, TrayMenuModel.shared.isEnabled &&
+            config.modes[activeMode]?.bindings.isEmpty == false && IsSecureEventInputEnabled()
+        {
             if isVisible { return }
             self.contentView?.subviews.removeAll()
             hostingView = NSHostingView(rootView: SecureInputView())
@@ -28,7 +28,7 @@ public class SecureInputPanel: NSPanelHud {
             self.setFrame(panelFrame, display: true)
             self.orderFrontRegardless()
         } else {
-            if isVisible { close() }
+            close()
         }
     }
 
@@ -68,6 +68,9 @@ struct SecureInputView: View {
         .foregroundStyle(fontColor)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .onTapGesture {
+            if !isMinimized {
+                SecureInputPanel.shared.refresh()
+            }
             isMinimized.toggle()
             SecureInputPanel.shared.updateFrame(isMinimized: isMinimized)
         }
@@ -76,9 +79,4 @@ struct SecureInputView: View {
             height: isMinimized ? iconSize.height : textSize.height,
         )
     }
-}
-
-#Preview {
-    SecureInputView()
-        .frame(width: 500, height: 120)
 }

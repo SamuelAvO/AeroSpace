@@ -2,6 +2,7 @@ import AppKit
 import Darwin
 import Foundation
 
+public let socketPath = "/tmp/\(aeroSpaceAppId)-\(unixUserName).sock"
 public let unixUserName = NSUserName()
 public let mainModeId = "main"
 
@@ -16,7 +17,7 @@ public func dieT<T>(
     file: String = #fileID,
     line: Int = #line,
     column: Int = #column,
-    function: String = #function
+    function: String = #function,
 ) -> T {
     let _message = __message.contains("\n") ? "\n" + __message.prefixLines(with: "    ") : __message
     let thread = Thread.current
@@ -77,6 +78,7 @@ public enum RefreshSessionEvent: Sendable, CustomStringConvertible {
     case ax(String)
     case onFocusedMonitorChanged
     case onFocusChanged
+    case onModeChanged
 
     public var isStartup: Bool {
         if case .startup = self { return true } else { return false }
@@ -94,6 +96,7 @@ public enum RefreshSessionEvent: Sendable, CustomStringConvertible {
             case .startup: "startup"
             case .onFocusedMonitorChanged: "onFocusedMonitorChanged"
             case .onFocusChanged: "onFocusChanged"
+            case .onModeChanged: "onModeChanged"
         }
     }
 }
@@ -182,16 +185,16 @@ extension URL {
     }
 }
 
-public func printStderr(_ msg: String) {
+public func eprint(_ msg: String) {
     fputs(msg + "\n", stderr)
 }
 
-public func cliError(_ message: String = "") -> Never {
-    cliErrorT(message)
+public func exit(stderrMsg message: String = "") -> Never {
+    exitT(stderrMsg: message)
 }
 
-public func cliErrorT<T>(_ message: String = "") -> T {
-    printStderr(message)
+public func exitT<T>(stderrMsg message: String = "") -> T {
+    eprint(message)
     exit(1)
 }
 

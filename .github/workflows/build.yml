@@ -29,7 +29,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: env # Debug
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - run: ./.github/gh-actions-runner-xcode-select.sh
       - run: brew install swiftly
       - run: swiftly init --skip-install --assume-yes --verbose && swiftly install
@@ -48,9 +48,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - run: env # Debug
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - run: ./.github/gh-actions-runner-xcode-select.sh
-      - run: brew install bash fish xcbeautify
+      - run: brew install bash fish xcbeautify swiftly
+      - run: swiftly init --skip-install --assume-yes --verbose && swiftly install
       - name: './build-release.sh'
         run: |
           # "-" means "Sign to run locally". There is no aerospace-codesign-certificate on GH Actions

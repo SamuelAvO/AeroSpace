@@ -11,8 +11,8 @@ source ./script/setup.sh
 ./.debug/aerospace --version | grep -q "0.0.0-SNAPSHOT SNAPSHOT"
 
 ./format.sh
-./generate.sh --all
+./generate.sh
 ./script/check-uncommitted-files.sh
 
 echo
-echo "All tests have passed successfully"
+echo "✅ All tests have passed successfully"

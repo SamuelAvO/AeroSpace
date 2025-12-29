@@ -17,6 +17,22 @@ defaults write -g NSWindowShouldDragOnGesture -bool true
 
 Now, you can move windows by holding `ctrl + cmd` and dragging any part of the window (not necessarily the window title)
 
+[#non-native-fullscreen-in-firefox]
+== Non-native fullscreen in Firefox
+
+Change the following settings in `about:config`:
+
+----
+// Disable macOS native fullscreen in Firefox
+full-screen-api.macos-native-full-screen = false
+
+// Disable fullscreen transition animations
+full-screen-api.transition-duration.enter = 0 0
+full-screen-api.transition-duration.leave = 0 0
+----
+
+`full-screen-api.ignore-widgets` is also an interesting config knob that might be of your preference.
+
 [#highlight-focused-windows-with-colored-borders]
 == Highlight focused windows with colored borders
 
@@ -83,7 +99,7 @@ Use these snippets as a starting point.
 [source,toml]
 ----
 # Run Sketchybar together with AeroSpace
-# sketchbar has a built-in detection of already running process,
+# sketchybar has a built-in detection of already running process,
 # so it won't be run twice on AeroSpace restart
 after-startup-command = ['exec-and-forget sketchybar']
 
@@ -156,7 +172,7 @@ exec-on-workspace-change = [
 Invoking Safari/Terminal with a command the obvious way (`exec-and-forget open -a Safari`) results in an outcome that is probably not the intended one.
 Namely, that any workspace already containing an instance of Safari/Terminal is brought in focus.
 
-Opening *a new window* of a program that can supports multiple windows (such as Safari or Terminal.app) can be accomplished with an AppleScript inlined in `aerospace.toml` as follows:
+Opening *a new window* of a program that can support multiple windows (such as Safari or Terminal.app) can be accomplished with an AppleScript inlined in `aerospace.toml` as follows:
 
 - Safari
 +
@@ -197,7 +213,7 @@ If `automatically-unhide-macos-hidden-apps` isn't enough, you can disable `cmd-h
 [#screenshoot-shortcut]
 == Take screenshots to clipboard using keyboard shortcut
 
-You can configure a custom shortcut take a screenshot.
+You can configure a custom shortcut to take a screenshot.
 `screencapture` is a built-in macOS command.
 
 .~/.aerospace.toml

@@ -1,26 +1,24 @@
 public struct JoinWithCmdArgs: CmdArgs {
-    public let rawArgs: EquatableNoop<[String]>
-    init(rawArgs: [String]) { self.rawArgs = .init(rawArgs) }
+    /*conforms*/ public var commonState: CmdArgsCommonState
+    init(rawArgs: StrArrSlice) { self.commonState = .init(rawArgs) }
     public static let parser: CmdParser<Self> = cmdParser(
         kind: .joinWith,
         allowInConfig: true,
         help: join_with_help_generated,
-        options: [
+        flags: [
             "--window-id": optionalWindowIdFlag(),
         ],
-        arguments: [newArgParser(\.direction, parseCardinalDirectionArg, mandatoryArgPlaceholder: CardinalDirection.unionLiteral)],
+        posArgs: [newArgParser(\.direction, parseCardinalDirectionArg, mandatoryArgPlaceholder: CardinalDirection.unionLiteral)],
     )
 
     public var direction: Lateinit<CardinalDirection> = .uninitialized
-    /*conforms*/ public var windowId: UInt32?
-    /*conforms*/ public var workspaceName: WorkspaceName?
 
     public init(rawArgs: [String], direction: CardinalDirection) {
-        self.rawArgs = .init(rawArgs)
+        self.commonState = .init(rawArgs.slice)
         self.direction = .initialized(direction)
     }
 }
 
-public func parseJoinWithCmdArgs(_ args: [String]) -> ParsedCmd<JoinWithCmdArgs> {
+public func parseJoinWithCmdArgs(_ args: StrArrSlice) -> ParsedCmd<JoinWithCmdArgs> {
     parseSpecificCmdArgs(JoinWithCmdArgs(rawArgs: args), args)
 }

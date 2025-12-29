@@ -1,11 +1,11 @@
 public struct WorkspaceCmdArgs: CmdArgs {
-    public let rawArgs: EquatableNoop<[String]>
-    public init(rawArgs: [String]) { self.rawArgs = .init(rawArgs) }
+    /*conforms*/ public var commonState: CmdArgsCommonState
+    public init(rawArgs: StrArrSlice) { self.commonState = .init(rawArgs) }
     public static let parser: CmdParser<Self> = cmdParser(
         kind: .workspace,
         allowInConfig: true,
         help: workspace_help_generated,
-        options: [
+        flags: [
             "--auto-back-and-forth": optionalTrueBoolFlag(\._autoBackAndForth),
             "--wrap-around": optionalTrueBoolFlag(\._wrapAround),
             "--fail-if-noop": trueBoolFlag(\.failIfNoop),
@@ -13,14 +13,12 @@ public struct WorkspaceCmdArgs: CmdArgs {
             "--stdin": optionalTrueBoolFlag(\.explicitStdinFlag),
             "--no-stdin": optionalFalseBoolFlag(\.explicitStdinFlag),
         ],
-        arguments: [newArgParser(\.target, parseWorkspaceTarget, mandatoryArgPlaceholder: workspaceTargetPlaceholder)],
+        posArgs: [newArgParser(\.target, parseWorkspaceTarget, mandatoryArgPlaceholder: workspaceTargetPlaceholder)],
         conflictingOptions: [
             ["--stdin", "--no-stdin"],
         ],
     )
 
-    /*conforms*/ public var windowId: UInt32?
-    /*conforms*/ public var workspaceName: WorkspaceName?
     public var target: Lateinit<WorkspaceTarget> = .uninitialized
     public var _autoBackAndForth: Bool?
     public var failIfNoop: Bool = false
@@ -28,7 +26,7 @@ public struct WorkspaceCmdArgs: CmdArgs {
     public var explicitStdinFlag: Bool? = nil
 }
 
-public func parseWorkspaceCmdArgs(_ args: [String]) -> ParsedCmd<WorkspaceCmdArgs> {
+public func parseWorkspaceCmdArgs(_ args: StrArrSlice) -> ParsedCmd<WorkspaceCmdArgs> {
     parseSpecificCmdArgs(WorkspaceCmdArgs(rawArgs: args), args)
         .filter("--wrapAround requires using \(NextPrev.unionLiteral) argument") { ($0._wrapAround != nil).implies($0.target.val.isRelatve) }
         .filterNot("--auto-back-and-forth is incompatible with \(NextPrev.unionLiteral)") { $0._autoBackAndForth != nil && $0.target.val.isRelatve }
@@ -48,7 +46,7 @@ public enum WorkspaceTarget: Equatable, Sendable {
     case direct(WorkspaceName)
 
     var isDirect: Bool { !isRelatve }
-    var isRelatve: Bool {
+    public var isRelatve: Bool {
         switch self {
             case .relative: true
             default: false
@@ -65,10 +63,10 @@ public enum WorkspaceTarget: Equatable, Sendable {
 
 let workspaceTargetPlaceholder = "(<workspace-name>|next|prev)"
 
-func parseWorkspaceTarget(arg: String, nextArgs: inout [String]) -> Parsed<WorkspaceTarget> {
-    return switch arg {
-        case "next": .success(.relative(.next))
-        case "prev": .success(.relative(.prev))
-        default: WorkspaceName.parse(arg).map(WorkspaceTarget.direct)
+func parseWorkspaceTarget(i: ArgParserInput) -> ParsedCliArgs<WorkspaceTarget> {
+    switch i.arg {
+        case "next": .succ(.relative(.next), advanceBy: 1)
+        case "prev": .succ(.relative(.prev), advanceBy: 1)
+        default: .init(WorkspaceName.parse(i.arg).map(WorkspaceTarget.direct), advanceBy: 1)
     }
 }
