@@ -7,26 +7,19 @@ final class TilingContainer: TreeNode, NonLeafTreeNodeObject { // todo consider 
     var layout: Layout
 
     @MainActor
-    init(
-        parent: NonLeafTreeNodeObject, adaptiveWeight: CGFloat, _ orientation: Orientation,
-        _ layout: Layout, index: Int
-    ) {
+    init(parent: NonLeafTreeNodeObject, adaptiveWeight: CGFloat, _ orientation: Orientation, _ layout: Layout, index: Int) {
         self._orientation = orientation
         self.layout = layout
         super.init(parent: parent, adaptiveWeight: adaptiveWeight, index: index)
     }
 
     @MainActor
-    static func newHTiles(parent: NonLeafTreeNodeObject, adaptiveWeight: CGFloat, index: Int)
-        -> TilingContainer
-    {
+    static func newHTiles(parent: NonLeafTreeNodeObject, adaptiveWeight: CGFloat, index: Int) -> TilingContainer {
         TilingContainer(parent: parent, adaptiveWeight: adaptiveWeight, .h, .tiles, index: index)
     }
 
     @MainActor
-    static func newVTiles(parent: NonLeafTreeNodeObject, adaptiveWeight: CGFloat, index: Int)
-        -> TilingContainer
-    {
+    static func newVTiles(parent: NonLeafTreeNodeObject, adaptiveWeight: CGFloat, index: Int) -> TilingContainer {
         TilingContainer(parent: parent, adaptiveWeight: adaptiveWeight, .v, .tiles, index: index)
     }
 }
