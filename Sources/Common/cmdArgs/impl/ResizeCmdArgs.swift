@@ -6,12 +6,10 @@ public struct ResizeCmdArgs: CmdArgs {
         allowInConfig: true,
         help: resize_help_generated,
         flags: [
-            "--window-id": optionalWindowIdFlag()
+            "--window-id": optionalWindowIdFlag(),
         ],
         posArgs: [
-            newArgParser(
-                \.dimension, parseDimension,
-                mandatoryArgPlaceholder: "(smart|smart-opposite|width|height)"),
+            newArgParser(\.dimension, parseDimension, mandatoryArgPlaceholder: "(smart|smart-opposite|width|height)"),
             newArgParser(\.units, parseUnits, mandatoryArgPlaceholder: "[+|-]<number>|predefined"),
         ],
     )
@@ -53,9 +51,9 @@ private func parseDimension(i: ArgParserInput) -> ParsedCliArgs<ResizeCmdArgs.Di
 private func parseUnits(i: ArgParserInput) -> ParsedCliArgs<ResizeCmdArgs.Units> {
     if let number = UInt(i.arg.removePrefix("+").removePrefix("-")) {
         switch true {
-        case i.arg.starts(with: "+"): .succ(.add(number), advanceBy: 1)
-        case i.arg.starts(with: "-"): .succ(.subtract(number), advanceBy: 1)
-        default: .succ(.set(number), advanceBy: 1)
+            case i.arg.starts(with: "+"): .succ(.add(number), advanceBy: 1)
+            case i.arg.starts(with: "-"): .succ(.subtract(number), advanceBy: 1)
+            default: .succ(.set(number), advanceBy: 1)
         }
     } else if i.arg == "predefined" {
         .succ(.predefined([1 / 3, 0.5, 2 / 3, 1.0]), advanceBy: 1)  // TODO make configurable (and also add hardcoded pixel size support?)
