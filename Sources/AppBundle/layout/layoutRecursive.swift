@@ -185,21 +185,30 @@ extension TilingContainer {
         let position = calcScrollingPosition(width, height)
         var currentOffset = position.offset
 
+        var inMonitorScrolling = monitors.count > 1
+        let currentMonitor = context.workspace.workspaceMonitor
+        let conflictingMonitor = monitors.first(where: {
+            $0.relation(to: currentMonitor) == orientation
+        })
+        if conflictingMonitor == nil {
+            inMonitorScrolling = false
+        }
+
         for index in stride(from: 0, through: children.count - 1, by: 1) {
             let child = children[index]
             let size = position.sizes[index]
-            let maxOverflowStart = monitors.count > 1 ? CGFloat(0) : size  // size / 3
-            let maxOverflowEnd = monitors.count > 1 ? CGFloat(0) : size  // size / 3
+            let maxOverflowStart = inMonitorScrolling ? CGFloat(0) : size
+            let maxOverflowEnd = inMonitorScrolling ? CGFloat(0) : size
 
             if index < position.start {
                 virtualTopLeftCorner =
                     orientation == .h
-                    ? topLeftCorner.addingXOffset(-size)  // gap or -size + 1
-                    : topLeftCorner.addingYOffset(-size)  // gap or -size + 1
+                    ? topLeftCorner.addingXOffset(-size)
+                    : topLeftCorner.addingYOffset(-size)
                 virtualPoint =
                     orientation == .h
-                    ? startPoint.addingXOffset(-size)  // gap or -size + 1
-                    : startPoint.addingYOffset(-size)  // gap or -size + 1
+                    ? startPoint.addingXOffset(-size)
+                    : startPoint.addingYOffset(-size)
             }
             if index >= position.start {
                 if index == position.start {
