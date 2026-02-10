@@ -60,7 +60,7 @@ private func resizeWithMouse(_ window: Window) async throws { // todo cover with
                 (
                     rect.getDimension(sParent?.orientation ?? .h)
                         - lastAppliedLayoutRect.getDimension(sParent?.orientation ?? .h), sParent,
-                    sOwnIndex.map { $0 + 1 },
+                    sOwnIndex,
                     sParent?.children.count
                 ),  // Single scrolling window
             ]
