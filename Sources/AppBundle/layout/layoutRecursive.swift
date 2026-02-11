@@ -46,6 +46,8 @@ extension TreeNode {
                         try await container.layoutTiles(point, width: width, height: height, virtual: virtual, context)
                     case .accordion:
                         try await container.layoutAccordion(point, width: width, height: height, virtual: virtual, context)
+                    case .scrolling:
+                        try await container.layoutScrolling(point, width: width, height: height, virtual: virtual, context)
                 }
             case .macosMinimizedWindowsContainer, .macosFullscreenWindowsContainer,
                  .macosPopupWindowsContainer, .macosHiddenAppsWindowsContainer:
@@ -163,5 +165,187 @@ extension TilingContainer {
                     )
             }
         }
+    }
+
+    @MainActor
+    fileprivate func layoutScrolling(
+        _ point: CGPoint, width: CGFloat, height: CGFloat, virtual: Rect, _ context: LayoutContext
+    ) async throws {
+
+        guard !children.isEmpty else { return }
+
+        let topLeftCorner = virtual.topLeftCorner
+        var virtualTopLeftCorner = topLeftCorner
+        var virtualPoint = point
+        let bottomRightCorner = virtual.bottomRightCorner
+        let startPoint = point
+        let gap = context.resolvedGaps.inner.get(orientation).toDouble()
+
+        setScrollingWindowWeight(width, height)
+        let position = calcScrollingPosition(width, height)
+        var currentOffset = position.offset
+
+        var inMonitorScrolling = monitors.count > 1
+        let currentMonitor = context.workspace.workspaceMonitor
+        let conflictingMonitor = monitors.first(where: {
+            $0.relation(to: currentMonitor) == orientation
+        })
+        if conflictingMonitor == nil {
+            inMonitorScrolling = false
+        }
+
+        for index in stride(from: 0, through: children.count - 1, by: 1) {
+            let child = children[index]
+            let size = position.sizes[index]
+            let maxOverflowStart = inMonitorScrolling ? CGFloat(0) : size
+            let maxOverflowEnd = inMonitorScrolling ? CGFloat(0) : size
+
+            if index < position.start {
+                virtualTopLeftCorner =
+                    orientation == .h
+                    ? topLeftCorner.addingXOffset(-size)
+                    : topLeftCorner.addingYOffset(-size)
+                virtualPoint =
+                    orientation == .h
+                    ? startPoint.addingXOffset(-size)
+                    : startPoint.addingYOffset(-size)
+            }
+            if index >= position.start {
+                if index == position.start {
+                    virtualTopLeftCorner = topLeftCorner
+                    virtualPoint = startPoint
+                }
+                virtualTopLeftCorner =
+                    orientation == .h
+                    ? virtualTopLeftCorner.addingXOffset(currentOffset)
+                    : virtualTopLeftCorner.addingYOffset(currentOffset)
+                virtualPoint =
+                    orientation == .h
+                    ? virtualPoint.addingXOffset(currentOffset)
+                    : virtualPoint.addingYOffset(currentOffset)
+                currentOffset = size
+            }
+            let lGap: CGFloat = index == 0 ? 0 : gap / 2
+            let rGap: CGFloat = index == children.count - 1 ? 0 : gap / 2
+
+            try await child.layoutRecursive(
+                CGPoint(
+                    x: orientation == .v
+                        ? virtualPoint.x
+                        : min(
+                            max(virtualPoint.x, startPoint.x - maxOverflowStart),
+                            startPoint.x + width - size + maxOverflowEnd),
+                    y: orientation == .h
+                        ? virtualPoint.y
+                        : min(
+                            max(virtualPoint.y, startPoint.y - maxOverflowStart),
+                            startPoint.y + height - size + maxOverflowEnd)
+                ).addingOffset(orientation, lGap),
+                width: orientation == .h ? size - lGap - rGap : width,
+                height: orientation == .v ? size - lGap - rGap : height,
+                virtual: Rect(
+                    topLeftX: min(
+                        max(virtualTopLeftCorner.x, topLeftCorner.x - maxOverflowStart),
+                        bottomRightCorner.x - size + maxOverflowEnd),
+                    topLeftY: min(
+                        max(virtualTopLeftCorner.y, topLeftCorner.y - maxOverflowStart),
+                        bottomRightCorner.y - size + maxOverflowEnd),
+                    width: orientation == .h ? size : width,
+                    height: orientation == .v ? size : height,
+                ),
+                context,
+            )
+        }
+    }
+
+    struct ScrollingPosition {
+        let start: Int
+        let end: Int
+        let offset: CGFloat
+        let sizes: [CGFloat]
+    }
+
+    @MainActor
+    fileprivate func setScrollingWindowWeight(
+        _ width: CGFloat, _ height: CGFloat
+    ) {
+        let orientationSize = (orientation == .h ? width : height)
+        let padding: CGFloat = CGFloat(config.accordionPadding)
+
+        // Initial size, TODO Set this in settings
+        let defaultSize =
+            (orientationSize > 2400
+                ? (orientationSize - padding) * (1 / 3)
+                : (orientationSize - padding) * 0.5)
+
+        for (_, child) in children.enumerated() {
+            let weight = child.getWeight(orientation)
+            if weight <= 1 {
+                child.setWeight(orientation, defaultSize)
+            } else if weight > orientationSize {
+                child.setWeight(orientation, orientationSize)
+            }
+        }
+    }
+
+    @MainActor
+    fileprivate func calcScrollingPosition(
+        _ width: CGFloat, _ height: CGFloat
+    ) -> ScrollingPosition {
+        let mruIndex: Int = mostRecentChild?.ownIndex ?? 0
+        let orientationSize = (orientation == .h ? width : height)
+        let padding: CGFloat = CGFloat(config.accordionPadding)
+        var mruChildren = mostRecentChildren
+
+        let sizes = children.map { child in
+            (orientation == .h
+                ? min(child.hWeight, width)
+                : min(child.vWeight, height))
+        }
+
+        var start = children.count - 1
+        var end = 0
+        var offset: CGFloat = 0.0
+
+        var item = mruChildren.next()
+        var indexes: [Int] = [0, children.count - 1]
+        var index = item?.ownIndex ?? indexes.first ?? -1
+        while index >= 0 {
+            // TODO IMPORTANT navigate from: itemIndex < start ? start - 1 ... itemIndex : itemIndex > end ? end + 1 ... itemIndex
+            indexes.remove(element: index)
+            let size = sizes[min(index, start)...max(index, end)].reduce(0, +)
+
+            start = min(start, index)
+            end = max(end, index)
+            if size >= orientationSize - 1 {
+                if index < mruIndex {
+                    // align to the right, half show this window by setting the offset
+                    offset = orientationSize - size
+                    if end < children.count - 1 && start != end
+                        && sizes[end] + padding <= orientationSize
+                    {
+                        offset -= padding
+                    }
+                } else {
+                    // Left align, no offset needed
+                    offset = 0
+                    if start > 0 && start != end && padding > 0
+                        && sizes[start] + padding <= orientationSize
+                    {
+                        // More items to the left, show one more item with padding size
+                        offset = 0 - sizes[start - 1] + padding
+                        start = start - 1
+                    }
+                }
+                break
+            } else if size < orientationSize {
+                // Center align when not filling all space
+                offset = (orientationSize - size) / 2
+            }
+
+            item = mruChildren.next()
+            index = item?.ownIndex ?? indexes.first ?? -1
+        }
+        return ScrollingPosition(start: start, end: end, offset: offset, sizes: sizes)
     }
 }
