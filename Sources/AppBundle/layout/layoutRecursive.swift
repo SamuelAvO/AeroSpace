@@ -188,7 +188,7 @@ extension TilingContainer {
         var inMonitorScrolling = monitors.count > 1
         let currentMonitor = context.workspace.workspaceMonitor
         let conflictingMonitor = monitors.first(where: {
-            $0.relation(to: currentMonitor) == orientation
+             $0.name != currentMonitor.name && $0.relation(to: currentMonitor) == orientation
         })
         if conflictingMonitor == nil {
             inMonitorScrolling = false
