@@ -1,16 +1,15 @@
 import Common
+import Foundation
 
 actor AwaitableOneTimeBroadcastLatch {
     private var done = false
-    private var awaiters: [Int: Nullable<CheckedContinuation<(), any Error>>] = [:]
-    private var counter = Int.min
+    private var awaiters: [UniqueToken: Nullable<CheckedContinuation<(), any Error>>] = [:]
 
     func await() async throws {
         try checkCancellation()
         if done { return }
 
-        let id = counter
-        counter += 1
+        let id = UniqueToken()
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<(), any Error>) in
                 if let awaiter = awaiters.removeValue(forKey: id) {
@@ -19,7 +18,7 @@ actor AwaitableOneTimeBroadcastLatch {
                 } else if done {
                     cont.resume()
                 } else {
-                    awaiters[id] = .some(cont)
+                    awaiters[id] = .just(cont)
                 }
             }
         } onCancel: {
@@ -27,15 +26,15 @@ actor AwaitableOneTimeBroadcastLatch {
         }
     }
 
-    private func cancel(id: Int) {
+    private func cancel(id: UniqueToken) {
         if let awaiter = awaiters.removeValue(forKey: id) {
             awaiter.valueOrNil.orDie().resume(throwing: CancellationError())
         } else if !done {
-            awaiters[id] = .null
+            awaiters[id] = .null // Indicate to 'await' that the client should be cancelled right away when it suspends
         }
     }
 
-    func signal() {
+    func signalToAll() {
         done = true
         for (_, awaiter) in awaiters {
             awaiter.valueOrNil?.resume()

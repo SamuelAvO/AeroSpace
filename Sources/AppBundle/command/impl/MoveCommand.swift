@@ -3,7 +3,7 @@ import Common
 
 struct MoveCommand: Command {
     let args: MoveCmdArgs
-    /*conforms*/ var shouldResetClosedWindowsCache = true
+    /*conforms*/ let shouldResetClosedWindowsCache = true
 
     func run(_ env: CmdEnv, _ io: CmdIo) -> Bool {
         let direction = args.direction.val
@@ -67,7 +67,7 @@ struct MoveCommand: Command {
 
                 return MoveNodeToMonitorCommand(args: moveNodeToMonitorArgs).run(env, io)
             } else {
-                return hitAllMonitorsOuterFrameBoundaries(window, workspace, io, args, direction)
+                return hitAllMonitorsOuterFrameBoundaries(window, workspace, args, direction)
             }
     }
 }
@@ -75,7 +75,6 @@ struct MoveCommand: Command {
 @MainActor private func hitAllMonitorsOuterFrameBoundaries(
     _ window: Window,
     _ workspace: Workspace,
-    _ io: CmdIo,
     _ args: MoveCmdArgs,
     _ direction: CardinalDirection,
 ) -> Bool {
@@ -107,7 +106,7 @@ private let moveOutMacosUnconventionalWindow = "moving macOS fullscreen, minimiz
     }) as? TilingContainer
     guard let innerMostChild else { return false }
     guard let parent = innerMostChild.parent else { return false }
-    switch parent.nodeCases {
+    switch parent.cases {
         case .tilingContainer(let parent):
             check(parent.orientation == direction.orientation)
             guard let ownIndex = innerMostChild.ownIndex else { return false }
@@ -119,8 +118,6 @@ private let moveOutMacosUnconventionalWindow = "moving macOS fullscreen, minimiz
             return io.err(moveOutMacosUnconventionalWindow)
         case .macosPopupWindowsContainer:
             return false // Impossible
-        case .window:
-            die("Window can't contain children nodes")
     }
 }
 

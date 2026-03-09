@@ -23,13 +23,13 @@ func toggleReleaseServerIfDebug(_ state: EnableCmdArgs.State) async {
     let socketFile = "/tmp/\(stableAeroSpaceAppId)-\(unixUserName).sock"
     let connection = NWConnection(to: NWEndpoint.unix(path: socketFile), using: .tcp)
     defer { connection.cancel() }
-    if await connection.startBlocking() != nil { // Can't connect, AeroSpace.app is not running
+    if await connection.startBlocking().error != nil { // Can't connect, AeroSpace.app is not running
         return
     }
 
     let req = ClientRequest(args: ["enable", state.rawValue], stdin: "", windowId: nil, workspace: nil)
-    _ = await connection.write(req)
-    _ = await connection.read()
+    _ = await connection.writeAtomic(req)
+    _ = await connection.readNonAtomic()
 }
 
 private let serverVersionAndHash = "\(aeroSpaceAppVersion) \(gitHash)"
@@ -40,24 +40,36 @@ private func newConnection(_ connection: NWConnection) async { // todo add exit 
         await answerToClient(ans)
     }
     func answerToClient(_ ans: ServerAnswer) async {
-        _ = await connection.write(ans)
+        _ = await connection.writeAtomic(ans)
     }
     while true {
-        let (rawRequest, error) = await connection.read().getOrNils()
-        if let error {
-            await answerToClient(exitCode: 1, stderr: "Error: \(error)")
-            return
+        let rawRequest: Data
+        switch await connection.readNonAtomic() {
+            case .success(let _rawRequest): rawRequest = _rawRequest
+            case .failure(let error):
+                await answerToClient(exitCode: 1, stderr: "Error: \(error)")
+                return
         }
-        guard let rawRequest else { die() }
-        let _request = ClientRequest.decodeJson(rawRequest)
-        guard let request: ClientRequest = _request.getOrNil() else {
-            await answerToClient(
-                exitCode: 1,
-                stderr: """
-                    Can't parse request '\(String(describing: String(data: rawRequest, encoding: .utf8)).singleQuoted)'.
-                    Error: \(_request.failureOrNil.prettyDescription)
-                    """,
-            )
+        let request: ClientRequest
+        switch ClientRequest.decodeJson(rawRequest) {
+            case .success(let _request): request = _request
+            case .failure(let error):
+                await answerToClient(
+                    exitCode: 1,
+                    stderr: """
+                        Can't parse request '\(String(describing: String(data: rawRequest, encoding: .utf8)).singleQuoted)'.
+                        Error: \(error)
+                        """,
+                )
+                continue
+        }
+        // Handle subscribe before parseCommand (subscribe doesn't have a Command impl)
+        if request.args.first == "subscribe" {
+            switch parseSubscribeCmdArgs(request.args.slice(1...).orDie()) {
+                case .cmd(let subscribeArgs): await handleSubscribeAndWaitTillError(connection, subscribeArgs)
+                case .help(let help): await answerToClient(exitCode: 0, stdout: help)
+                case .failure(let err): await answerToClient(exitCode: 1, stderr: err)
+            }
             continue
         }
         let (command, help, err) = parseCommand(request.args).unwrap()
@@ -83,7 +95,7 @@ private func newConnection(_ connection: NWConnection) async { // todo add exit 
         }
         if let command {
             let _answer: Result<ServerAnswer, Error> = await Result {
-                try await runLightSession(.socketServer, token) { () throws in
+                try await runLightSession(.socketServer(command.args), token) { () throws in
                     let env = CmdEnv.init(
                         windowId: request.windowId.flatMap { $0 },
                         workspaceName: request.workspace.flatMap { $0 },

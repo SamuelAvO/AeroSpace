@@ -5,7 +5,7 @@ let _monitors = "\(onitor)..."
 
 public struct ListWorkspacesCmdArgs: CmdArgs {
     /*conforms*/ public var commonState: CmdArgsCommonState
-    public static let parser: CmdParser<Self> = cmdParser(
+    public static let parser: CmdParser<Self> = .init(
         kind: .listWorkspaces,
         allowInConfig: false,
         help: list_workspaces_help_generated,
@@ -17,7 +17,7 @@ public struct ListWorkspacesCmdArgs: CmdArgs {
             // Filtering flags
             "--visible": boolFlag(\.filteringOptions.visible),
             "--empty": boolFlag(\.filteringOptions.empty),
-            "--monitor": SubArgParser(\.filteringOptions.onMonitors, parseMonitorIds),
+            "--monitor": ArgParser(\.filteringOptions.onMonitors, parseMonitorIds),
 
             // Formatting flags
             "--format": formatParser(\._format, for: .workspace),
@@ -51,7 +51,7 @@ extension ListWorkspacesCmdArgs {
     public var format: [StringInterToken] { _format.isEmpty ? [.interVar("workspace")] : _format }
 }
 
-public func parseListWorkspacesCmdArgs(_ args: StrArrSlice) -> ParsedCmd<ListWorkspacesCmdArgs> {
+func parseListWorkspacesCmdArgs(_ args: StrArrSlice) -> ParsedCmd<ListWorkspacesCmdArgs> {
     parseSpecificCmdArgs(ListWorkspacesCmdArgs(commonState: .init(args)), args)
         .filter("Mandatory option is not specified (--all|--focused|--monitor)") { raw in
             raw.all || raw.focused || !raw.filteringOptions.onMonitors.isEmpty

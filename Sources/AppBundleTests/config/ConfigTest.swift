@@ -87,7 +87,7 @@ final class ConfigTest: XCTestCase {
         let binding = HotkeyBinding(.option, .h, [FocusCommand.new(direction: .left)])
         assertEquals(
             config.modes[mainModeId],
-            Mode(name: nil, bindings: [binding.descriptionWithKeyCode: binding]),
+            Mode(bindings: [binding.descriptionWithKeyCode: binding]),
         )
     }
 
@@ -124,7 +124,7 @@ final class ConfigTest: XCTestCase {
         let binding = HotkeyBinding(.option, .k, [FocusCommand.new(direction: .up)])
         assertEquals(
             config.modes[mainModeId],
-            Mode(name: nil, bindings: [binding.descriptionWithKeyCode: binding]),
+            Mode(bindings: [binding.descriptionWithKeyCode: binding]),
         )
     }
 
@@ -217,6 +217,7 @@ final class ConfigTest: XCTestCase {
             """,
         )
         assertEquals(
+            errors.descriptions,
             ["""
                 The config contains:
                 1. usage of 'split' command
@@ -225,7 +226,6 @@ final class ConfigTest: XCTestCase {
 
                 My recommendation: keep the normalizations enabled, and prefer 'join-with' over 'split'.
                 """],
-            errors.descriptions,
         )
     }
 

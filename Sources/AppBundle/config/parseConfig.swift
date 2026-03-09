@@ -42,7 +42,8 @@ enum TomlParseError: Error, CustomStringConvertible, Equatable {
     var description: String {
         return switch self {
             // todo Make 'split' + flatten normalization prettier
-            case .semantic(let backtrace, let message): backtrace.isEmptyRoot ? message : "\(backtrace): \(message)"
+            case .semantic(let backtrace, let message) where backtrace.description.isEmpty: message
+            case .semantic(let backtrace, let message): "\(backtrace): \(message)"
             case .syntax(let message): message
         }
     }
@@ -231,7 +232,7 @@ func parseCommandOrCommands(_ raw: TOMLValueConvertible) -> Parsed<[any Command]
 }
 
 func parseIndentForNestedContainersWithTheSameOrientation(
-    _ raw: TOMLValueConvertible,
+    _ _: TOMLValueConvertible,
     _ backtrace: TomlBacktrace,
 ) -> ParsedToml<Void> {
     let msg = "Deprecated. Please drop it from the config. See https://github.com/nikitabobko/AeroSpace/issues/96"
@@ -346,46 +347,45 @@ func parseBool(_ raw: TOMLValueConvertible, _ backtrace: TomlBacktrace) -> Parse
     raw.bool.orFailure(expectedActualTypeError(expected: .bool, actual: raw.type, backtrace))
 }
 
-indirect enum TomlBacktrace: CustomStringConvertible, Equatable {
-    case emptyRoot
-    case rootKey(String)
-    case key(String)
-    case index(Int)
-    case pair(TomlBacktrace, TomlBacktrace)
+struct TomlBacktrace: CustomStringConvertible, Equatable {
+    private var path: [TomlBacktraceItem] = []
+    private init(_ path: [TomlBacktraceItem]) {
+        check(path.first?.isKey != false, "Tried to construct invalid TOML path: \(path)")
+        self.path = path
+    }
+
+    static func rootKey(_ key: String) -> Self { .init([.key(key)]) }
+    static let emptyRoot: Self = .init([])
 
     var description: String {
-        return switch self {
-            case .emptyRoot: dieT("Impossible")
-            case .rootKey(let value): value
-            case .key(let value): "." + value
-            case .index(let index): "[\(index)]"
-            case .pair(let first, let second): first.description + second.description
-        }
-    }
-
-    var isEmptyRoot: Bool {
-        return switch self {
-            case .emptyRoot: true
-            default: false
-        }
-    }
-
-    var isRootKey: Bool {
-        return switch self {
-            case .rootKey: true
-            default: false
-        }
-    }
-
-    static func + (lhs: TomlBacktrace, rhs: TomlBacktrace) -> TomlBacktrace {
-        if case .emptyRoot = lhs {
-            if case .key(let newRoot) = rhs {
-                return .rootKey(newRoot)
-            } else {
-                die("Impossible")
+        var result = ""
+        for (i, elem) in path.enumerated() {
+            switch elem {
+                case .key(let rootKey) where i == 0: result += rootKey
+                case .key(let key): result += ".\(key)"
+                case .index(let index): result += "[\(index)]"
             }
-        } else {
-            return pair(lhs, rhs)
+        }
+        return result
+    }
+
+    var isRootKey: Bool { path.singleOrNil().map(\.isKey) == true }
+
+    static func + (lhs: Self, rhs: TomlBacktraceItem) -> Self {
+        var result = lhs
+        result.path += [rhs]
+        return result
+    }
+}
+
+enum TomlBacktraceItem: Equatable {
+    case key(String)
+    case index(Int)
+
+    var isKey: Bool {
+        switch self {
+            case .key: true
+            case .index: false
         }
     }
 }
