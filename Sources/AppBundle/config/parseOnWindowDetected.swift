@@ -1,5 +1,4 @@
 import Common
-import TOMLKit
 
 struct WindowDetectedCallback: ConvenienceCopyable, Equatable {
     var matcher: WindowDetectedCallbackMatcher = WindowDetectedCallbackMatcher()
@@ -66,7 +65,7 @@ struct WindowDetectedCallbackMatcher: ConvenienceCopyable, Equatable {
 private let windowDetectedParser: [String: any ParserProtocol<WindowDetectedCallback>] = [
     "if": Parser(\.matcher, parseMatcher),
     "check-further-callbacks": Parser(\.checkFurtherCallbacks, parseBool),
-    "run": Parser(\.rawRun, upcast { parseCommandOrCommands($0).toParsedToml($1) }),
+    "run": Parser(\.rawRun, upcast { parseCommandOrCommands($0).toParsedConfig($1) }),
 ]
 
 private let matcherParsers: [String: any ParserProtocol<WindowDetectedCallbackMatcher>] = [
@@ -77,29 +76,29 @@ private let matcherParsers: [String: any ParserProtocol<WindowDetectedCallbackMa
     "during-aerospace-startup": Parser(\.duringAeroSpaceStartup, upcast(parseBool)),
 ]
 
-private func upcast<T>(_ fun: @escaping @Sendable (TOMLValueConvertible, TomlBacktrace) -> ParsedToml<T>) -> @Sendable (TOMLValueConvertible, TomlBacktrace) -> ParsedToml<T?> {
+private func upcast<T>(_ fun: @escaping @Sendable (Json, ConfigBacktrace) -> ParsedConfig<T>) -> @Sendable (Json, ConfigBacktrace) -> ParsedConfig<T?> {
     { fun($0, $1).map { $0 } }
 }
 
-func parseOnWindowDetectedArray(_ raw: TOMLValueConvertible, _ backtrace: TomlBacktrace, _ errors: inout [TomlParseError]) -> [WindowDetectedCallback] {
-    if let array = raw.array {
+func parseOnWindowDetectedArray(_ raw: Json, _ backtrace: ConfigBacktrace, _ errors: inout [ConfigParseError]) -> [WindowDetectedCallback] {
+    if let array = raw.asArrayOrNil {
         return array.enumerated().map { (index, raw) in parseWindowDetectedCallback(raw, backtrace + .index(index), &errors) }.filterNotNil()
     } else {
-        errors += [expectedActualTypeError(expected: .array, actual: raw.type, backtrace)]
+        errors += [expectedActualTypeError(expected: .array, actual: raw.tomlType, backtrace)]
         return []
     }
 }
 
-private func parseCasInsensitiveRegex(_ raw: TOMLValueConvertible, _ backtrace: TomlBacktrace) -> ParsedToml<Regex<AnyRegexOutput>> {
-    parseString(raw, backtrace).flatMap { parseCaseInsensitiveRegex($0).toParsedToml(backtrace) }
+private func parseCasInsensitiveRegex(_ raw: Json, _ backtrace: ConfigBacktrace) -> ParsedConfig<Regex<AnyRegexOutput>> {
+    parseString(raw, backtrace).flatMap { parseCaseInsensitiveRegex($0).toParsedConfig(backtrace) }
 }
 
-private func parseMatcher(_ raw: TOMLValueConvertible, _ backtrace: TomlBacktrace, _ errors: inout [TomlParseError]) -> WindowDetectedCallbackMatcher {
+private func parseMatcher(_ raw: Json, _ backtrace: ConfigBacktrace, _ errors: inout [ConfigParseError]) -> WindowDetectedCallbackMatcher {
     parseTable(raw, WindowDetectedCallbackMatcher(), matcherParsers, backtrace, &errors)
 }
 
-private func parseWindowDetectedCallback(_ raw: TOMLValueConvertible, _ backtrace: TomlBacktrace, _ errors: inout [TomlParseError]) -> WindowDetectedCallback? {
-    var myErrors: [TomlParseError] = []
+private func parseWindowDetectedCallback(_ raw: Json, _ backtrace: ConfigBacktrace, _ errors: inout [ConfigParseError]) -> WindowDetectedCallback? {
+    var myErrors: [ConfigParseError] = []
     let callback = parseTable(raw, WindowDetectedCallback(), windowDetectedParser, backtrace, &myErrors)
 
     if callback.rawRun == nil { // ID-46D063B2

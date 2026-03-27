@@ -3,8 +3,8 @@ import Common
 
 enum Json: Encodable, Equatable {
     // vector
-    case dict([String: Json])
-    case array([Json])
+    case dict(JsonDict)
+    case array(JsonArray)
 
     // scalar
     case null
@@ -12,6 +12,9 @@ enum Json: Encodable, Equatable {
     case int(Int)
     case uint32(UInt32)
     case bool(Bool)
+
+    typealias JsonDict = [String: Json]
+    typealias JsonArray = [Json]
 
     func encode(to encoder: any Encoder) throws {
         switch self {
@@ -26,22 +29,24 @@ enum Json: Encodable, Equatable {
     }
 
     static func newOrDie(_ value: Any?) -> Json {
-        if let value = value as? [String: Any?] {
-            return .dict(value.mapValues(newOrDie))
-        } else if let value = value as? [Any?] {
-            return .array(value.map(newOrDie))
-        } else if let value = value as? Int {
-            return .int(value)
-        } else if let value = value as? UInt32 {
-            return .uint32(value)
-        } else if let value = value as? Bool {
-            return .bool(value)
-        } else if let value = value as? String {
-            return .string(value)
-        } else if value == nil || value is NSNull {
-            return .null
-        } else {
-            die("Can't parse \(String(describing: value)) (\(type(of: value))) to JSON")
+        switch value {
+            case let value as [String: Any?]: .dict(value.mapValues(newOrDie))
+            case let value as [Any?]: .array(value.map(newOrDie))
+            default:
+                newScalarOrNil(value)
+                    ?? dieT("Can't parse \(String(describing: value)) (\(Swift.type(of: value))) to JSON")
+        }
+    }
+
+    static func newScalarOrNil(_ value: Any?) -> Json? {
+        switch value {
+            case let value as Int: .int(value)
+            case let value as Int64: Int(exactly: value).map(Json.int)
+            case let value as UInt32: .uint32(value)
+            case let value as Bool: .bool(value)
+            case let value as String: .string(value)
+            case nil, is NSNull: .null
+            default: nil
         }
     }
 
@@ -61,11 +66,48 @@ enum Json: Encodable, Equatable {
         }
     }
 
-    var asDictOrDie: [String: Json] {
-        if case .dict(let dict) = self {
-            dict
-        } else {
-            dieT("\(self) is not a dict")
+    var asDictOrDie: [String: Json] { asDictOrNil.orDie("\(self) is not a dict") }
+
+    var asIntOrNil: Int? {
+        if case .int(let value) = self { value } else { nil }
+    }
+
+    var asStringOrNil: String? {
+        if case .string(let value) = self { value } else { nil }
+    }
+
+    var asBoolOrNil: Bool? {
+        if case .bool(let value) = self { value } else { nil }
+    }
+
+    var asDictOrNil: JsonDict? {
+        if case .dict(let value) = self { value } else { nil }
+    }
+
+    var asArrayOrNil: JsonArray? {
+        if case .array(let value) = self { value } else { nil }
+    }
+
+    var tomlType: TomlType {
+        switch self {
+            case .dict: return .table
+            case .array: return .array
+            case .null: return .null
+            case .string: return .string
+            case .int: return .int
+            case .uint32: return .uint32
+            case .bool: return .bool
         }
     }
+}
+
+enum TomlType: String {
+    case table
+    case array
+
+    case null
+    case string
+    case int
+    case uint32
+    case bool
 }
