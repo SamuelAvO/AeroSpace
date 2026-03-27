@@ -299,16 +299,30 @@ extension TilingContainer {
     fileprivate func calcScrollingPosition(
         _ width: CGFloat, _ height: CGFloat
     ) -> ScrollingPosition {
-        let mruIndex: Int = mostRecentChild?.ownIndex ?? 0
         let orientationSize = (orientation == .h ? width : height)
-        let padding: CGFloat = CGFloat(config.accordionPadding)
-        var mruChildren = mostRecentChildren
 
         let sizes = children.map { child in
             (orientation == .h
                 ? min(child.hWeight, width)
                 : min(child.vWeight, height))
         }
+        let totalSize = sizes.reduce(0, +)
+        
+        if totalSize < orientationSize {
+            return calcFittingScrollingPosition(sizes, orientationSize, totalSize)
+        } else {
+            return calcOverflowScrollingPosition(sizes, orientationSize)
+        }
+
+    }
+
+        @MainActor
+    fileprivate func calcOverflowScrollingPosition(
+        _ sizes: [CGFloat], _ orientationSize: CGFloat
+    ) -> ScrollingPosition {
+        let mruIndex: Int = mostRecentChild?.ownIndex ?? 0
+        let padding: CGFloat = CGFloat(config.accordionPadding)
+        var mruChildren = mostRecentChildren
 
         var start = children.count - 1
         var end = 0
@@ -345,14 +359,37 @@ extension TilingContainer {
                     }
                 }
                 break
-            } else if size < orientationSize {
-                // Center align when not filling all space
-                offset = (orientationSize - size) / 2
             }
 
             item = mruChildren.next()
             index = item?.ownIndex ?? indexes.first ?? -1
         }
+
         return ScrollingPosition(start: start, end: end, offset: offset, sizes: sizes)
+    }
+
+        @MainActor
+    fileprivate func calcFittingScrollingPosition(
+        _ sizes: [CGFloat], _ orientationSize: CGFloat, _ totalSize: CGFloat
+    ) -> ScrollingPosition {
+        let addToAllWindows = (orientationSize - totalSize) / CGFloat(children.count)
+
+        var offset: CGFloat = 0.0
+        var responseSizes = sizes
+
+        if totalSize < orientationSize {
+            // Stretch align when not filling all space. TODO add config
+            offset = 0
+            for i in 0 ..< sizes.count {
+                responseSizes[i] = sizes[i] + addToAllWindows
+            }
+            responseSizes = sizes.map({$0 + addToAllWindows})
+        } else if totalSize < orientationSize {
+            // Center align when not filling all space
+            offset = (orientationSize - totalSize) / 2
+        }
+        
+
+        return ScrollingPosition(start: 0, end: children.count, offset: offset, sizes: responseSizes)
     }
 }
