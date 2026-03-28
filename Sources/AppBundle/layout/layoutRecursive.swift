@@ -204,8 +204,8 @@ extension TilingContainer {
         for index in stride(from: 0, through: children.count - 1, by: 1) {
             let child = children[index]
             let size = position.sizes[index]
-            let maxOverflowStart = inMonitorScrolling ? CGFloat(0) : size
-            let maxOverflowEnd = inMonitorScrolling ? CGFloat(0) : size
+            let maxOverflowStart = inMonitorScrolling ? CGFloat(0) : size - 1
+            let maxOverflowEnd = inMonitorScrolling ? CGFloat(0) : size - 1
 
             if index < position.start {
                 virtualTopLeftCorner =
