@@ -43,7 +43,7 @@ private func smartLayoutAtStartup() {
     let workspace = focus.workspace
     let root = workspace.rootTilingContainer
     if root.children.count <= 3 {
-        root.layout = .tiles
+        root.layout = .scrolling
     } else {
         root.layout = .scrolling
     }
