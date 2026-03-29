@@ -320,7 +320,7 @@ extension TilingContainer {
     fileprivate func calcOverflowScrollingPosition(
         _ sizes: [CGFloat], _ orientationSize: CGFloat
     ) -> ScrollingPosition {
-        let mruIndex: Int = mostRecentChild?.ownIndex ?? 0
+        let mruIndex: Int = mostRecentChild?.ownIndex ?? -1
         let padding: CGFloat = CGFloat(config.accordionPadding)
         var mruChildren = mostRecentChildren
 
@@ -330,7 +330,7 @@ extension TilingContainer {
 
         var item = mruChildren.next()
         var indexes: [Int] = [0, children.count - 1]
-        var index = item?.ownIndex ?? indexes.first ?? -1
+        var index = mruIndex
         while index >= 0 {
             // TODO IMPORTANT navigate from: itemIndex < start ? start - 1 ... itemIndex : itemIndex > end ? end + 1 ... itemIndex
             indexes.remove(element: index)
