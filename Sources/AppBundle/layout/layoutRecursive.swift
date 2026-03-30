@@ -330,7 +330,7 @@ extension TilingContainer {
 
         var item = mruChildren.next()
         var indexes: [Int] = [0, children.count - 1]
-        var index = mruIndex
+        var index = item?.ownIndex ?? indexes.first ?? -1
         while index >= 0 {
             // TODO IMPORTANT navigate from: itemIndex < start ? start - 1 ... itemIndex : itemIndex > end ? end + 1 ... itemIndex
             indexes.remove(element: index)
