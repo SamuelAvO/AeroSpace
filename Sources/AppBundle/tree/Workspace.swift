@@ -76,7 +76,7 @@ final class Workspace: TreeNode, NonLeafTreeNodeObject, Hashable, Comparable {
             ("isVisible", String(isVisible)),
             ("isEffectivelyEmpty", String(isEffectivelyEmpty)),
             ("doKeepAlive", String(config.persistentWorkspaces.contains(name))),
-        ].map { "\($0.0): '\(String(describing: $0.1))'" }.joined(separator: ", ")
+        ].map { "\($0.0): \(String(describing: $0.1).singleQuoted)" }.joined(separator: ", ")
         return "Workspace(\(description))"
     }
 
@@ -195,9 +195,8 @@ private func rearrangeWorkspacesOnMonitors() {
 
 @MainActor
 private func isValidAssignment(workspace: Workspace, screen: CGPoint) -> Bool {
-    if let forceAssigned = workspace.forceAssignedMonitor, forceAssigned.rect.topLeftCorner != screen {
-        return false
-    } else {
-        return true
+    switch workspace.forceAssignedMonitor {
+        case let forceAssigned? where forceAssigned.rect.topLeftCorner != screen: false
+        default: true
     }
 }

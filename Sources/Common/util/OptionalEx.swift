@@ -10,33 +10,27 @@ extension Optional {
     }
 
     public func orFailure<F: Error>(_ or: @autoclosure () -> F) -> Result<Wrapped, F> {
-        if let ok = self {
-            return .success(ok)
-        } else {
-            return .failure(or())
-        }
-    }
-
-    public func flatMapAsync<U>(_ transform: (Wrapped) async throws -> U?) async rethrows -> U? {
-        if let ok = self {
-            return try await transform(ok)
-        } else {
-            return nil
-        }
+        self.map(Result.success) ?? .failure(or())
     }
 
     public func asList() -> [Wrapped] {
-        if let ok = self {
-            return [ok]
-        } else {
-            return []
+        switch self {
+            case let ok?: [ok]
+            case nil: []
+        }
+    }
+
+    public func flattenOptional<T>() -> T? where Wrapped == T? {
+        switch self {
+            case let x?: x
+            case nil: nil
         }
     }
 
     public var prettyDescription: String {
-        if let unwrapped = self {
-            return String(describing: unwrapped)
+        switch self {
+            case let ok?: String(describing: ok)
+            case nil: "nil"
         }
-        return "nil"
     }
 }

@@ -138,7 +138,7 @@ extension ParsedCmd where T == any Command {
                     ? .success(a)
                     : .failure("Command '\(a.info.kind.rawValue)' cannot be used in config")
             case .help(let a): .failure(a)
-            case .failure(let a): .failure(a)
+            case .failure(let a): .failure(a.msg)
         }
     }
 }
@@ -196,8 +196,7 @@ func tomlAnyToParsedConfigRecursive(any: Any, _ backtrace: ConfigBacktrace) -> P
             }
             return .success(.array(json))
         default:
-            return Json.newScalarOrNil(any).map(Result.success)
-                ?? .failure(.semantic(backtrace, "Unsupported TOML type: \(type(of: any))"))
+            return Json.newScalarOrNil(any).orFailure(.semantic(backtrace, "Unsupported TOML type: \(type(of: any))"))
     }
 }
 
@@ -267,10 +266,7 @@ func tomlAnyToParsedConfigRecursive(any: Any, _ backtrace: ConfigBacktrace) -> P
     return (config, errors)
 }
 
-func parseIndentForNestedContainersWithTheSameOrientation(
-    _ _: Json,
-    _ backtrace: ConfigBacktrace,
-) -> ParsedConfig<Void> {
+func parseIndentForNestedContainersWithTheSameOrientation(_ _: Json, _ backtrace: ConfigBacktrace) -> ParsedConfig<Void> {
     let msg = "Deprecated. Please drop it from the config. See https://github.com/nikitabobko/AeroSpace/issues/96"
     return .failure(.semantic(backtrace, msg))
 }
@@ -290,7 +286,7 @@ func parseString(_ raw: Json, _ backtrace: ConfigBacktrace) -> ParsedConfig<Stri
     raw.asStringOrNil.orFailure(expectedActualTypeError(expected: .string, actual: raw.tomlType, backtrace))
 }
 
-func parseSimpleType<T>(_ raw: Json) -> T? {
+func parseSimpleType<T>(_ raw: Json, ofType: T.Type) -> T? {
     (raw.asIntOrNil as? T) ?? (raw.asStringOrNil as? T) ?? (raw.asBoolOrNil as? T)
 }
 
@@ -437,10 +433,9 @@ extension Json.JsonDict {
 
         for (key, value) in self {
             let backtrace: ConfigBacktrace = backtrace + .key(key)
-            if let parser = fieldsParser[key] {
-                raw = parser.transformRawConfig(raw, value, backtrace, &errors)
-            } else {
-                errors.append(unknownKeyError(backtrace))
+            switch fieldsParser[key] {
+                case let parser?: raw = parser.transformRawConfig(raw, value, backtrace, &errors)
+                case nil: errors.append(unknownKeyError(backtrace))
             }
         }
 

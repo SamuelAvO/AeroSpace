@@ -179,7 +179,7 @@ extension URL {
 }
 
 public func eprint(_ msg: String) {
-    fputs(msg + "\n", stderr)
+    unsafe fputs(msg + "\n", stderr)
 }
 
 public func exit(_ exitCode: Int32, out: String? = nil, err: String? = nil) -> Never {
@@ -191,6 +191,9 @@ public func exitT<T>(_ exitCode: Int32, out: String? = nil, err: String? = nil) 
     if let err { eprint(err) }
     exit(exitCode)
 }
+
+/// 'id' stands for 'identity'. It's a common name in functional programming
+public func id<T>(_ t: T) -> T { t }
 
 @inlinable
 public func allowOnlyCancellationError<T>(_ block: () async throws -> sending T) async throws -> sending T {

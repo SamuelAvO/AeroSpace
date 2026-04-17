@@ -23,14 +23,14 @@ struct DebugWindowsCommand: Command {
     let args: DebugWindowsCmdArgs
     /*conforms*/ let shouldResetClosedWindowsCache = false
 
-    func run(_ env: CmdEnv, _ io: CmdIo) async throws -> Bool {
+    func run(_ env: CmdEnv, _ io: CmdIo) async throws -> BinaryExitCode {
         if let windowId = args.windowId {
             guard let window = Window.get(byId: windowId) else {
-                return io.err("Can't find window with the specified window-id: \(windowId)")
+                return .fail(io.err("Can't find window with the specified window-id: \(windowId)"))
             }
             io.out(try await dumpWindowDebugInfo(window) + "\n")
             io.out(disclaimer)
-            return true
+            return .succ
         }
         switch debugWindowsState {
             case .recording:
@@ -39,7 +39,7 @@ struct DebugWindowsCommand: Command {
                 io.out("\n" + disclaimer + "\n")
                 io.out("Debug session finished" + "\n")
                 debugWindowsLog = [:]
-                return true
+                return .succ
             case .notRecording:
                 debugWindowsState = .recording
                 debugWindowsLog = [:]
@@ -51,11 +51,11 @@ struct DebugWindowsCommand: Command {
                     """,
                 )
                 // Make sure that the Terminal window that started the recording is recorded first
-                guard let target = args.resolveTargetOrReportError(env, io) else { return false }
+                guard let target = args.resolveTargetOrReportError(env, io) else { return .fail }
                 if let window = target.windowOrNil {
                     try await debugWindowsIfRecording(window)
                 }
-                return true
+                return .succ
             case .recordingAborted:
                 io.out(
                     """
@@ -65,7 +65,7 @@ struct DebugWindowsCommand: Command {
                 )
                 debugWindowsState = .notRecording
                 debugWindowsLog = [:]
-                return false
+                return .fail
         }
     }
 }
@@ -80,7 +80,7 @@ private func dumpWindowDebugInfo(_ window: Window) async throws -> String {
     let windowLevel = getWindowLevel(for: window.windowId)
     let windowLevelJson = windowLevel?.toJson() ?? .null
     result["Aero.windowLevel"] = windowLevelJson
-    result["Aero.axWindowId"] = .uint32(window.windowId)
+    result["Aero.axWindowId"] = .int(window.windowId)
     result["Aero.workspace"] = .stringOrNull(window.nodeWorkspace?.name)
     result["Aero.treeNodeParent"] = .string(String(describing: window.parent))
     result["Aero.macOS.version"] = .string(ProcessInfo().operatingSystemVersionString) // because built-in apps might behave differently depending on the OS version

@@ -7,8 +7,8 @@ public struct FocusCmdArgs: CmdArgs {
         help: focus_help_generated,
         flags: [
             "--ignore-floating": falseBoolFlag(\.floatingAsTiling),
-            "--window-id": ArgParser(\.windowId, upcastArgParserFun(parseUInt32SubArg)),
-            "--dfs-index": ArgParser(\.dfsIndex, upcastArgParserFun(parseUInt32SubArg)),
+            "--window-id": windowIdSubArgParser(),
+            "--dfs-index": singleValueSubArgParser(\.dfsIndex, "<dfs-index>", parseUInt32),
 
             "--boundaries": ArgParser(\.rawBoundaries, upcastArgParserFun(parseBoundaries)),
             "--boundaries-action": ArgParser(\.rawBoundariesAction, upcastArgParserFun(parseBoundariesAction)),
@@ -62,10 +62,9 @@ public enum FocusCmdTarget {
     case dfsRelative(DfsNextPrev)
 
     var isDfsRelative: Bool {
-        if case .dfsRelative = self {
-            return true
-        } else {
-            return false
+        switch self {
+            case .dfsRelative: true
+            default: false
         }
     }
 }

@@ -1,16 +1,23 @@
 public func parseCmdArgs(_ args: StrArrSlice) -> ParsedCmd<any CmdArgs> {
     let subcommand = String(args.first ?? "")
     if subcommand.isEmpty {
-        return .failure("Can't parse empty string command")
+        return .failure("Can't parse empty string command", EXIT_CODE_TWO)
     }
     if let subcommandParser: any SubCommandParserProtocol = subcommandParsers[subcommand] {
         return subcommandParser.parse(args: args.slice(1...).orDie())
     } else {
-        return .failure("Unrecognized subcommand '\(subcommand)'")
+        return .failure("Unrecognized subcommand '\(subcommand)'", EXIT_CODE_TWO)
     }
 }
 
-public protocol CmdArgs: ConvenienceCopyable, Equatable, CustomStringConvertible, AeroAny, Sendable {
+public protocol CmdArgs:
+    ConvenienceCopyable,
+    Equatable,
+    CustomStringConvertible,
+    AeroAny,
+    Sendable
+{
+    associatedtype ExitCodeType: ExitCode = BinaryExitCode
     static var parser: CmdParser<Self> { get }
     var commonState: CmdArgsCommonState { get set }
 }
@@ -35,6 +42,8 @@ extension CmdArgs {
         get { commonState.workspaceName }
         set(value) { commonState.workspaceName = value }
     }
+
+    public var failExitCode: Int32 { ExitCodeType.fail.rawValue }
 
     public func equals(_ other: any CmdArgs) -> Bool { // My brain is cursed with Java
         (other as? Self).flatMap { self == $0 } ?? false

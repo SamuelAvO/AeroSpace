@@ -5,43 +5,55 @@ import Common
 private var activeRefreshTask: Task<(), any Error>? = nil
 
 @MainActor
-func scheduleRefreshSession(
+func scheduleCancellableCompleteRefreshSession(
     _ event: RefreshSessionEvent,
     optimisticallyPreLayoutWorkspaces: Bool = false,
 ) {
     activeRefreshTask?.cancel()
     activeRefreshTask = Task { @MainActor in
         try checkCancellation()
-        try await runRefreshSessionBlocking(event, optimisticallyPreLayoutWorkspaces: optimisticallyPreLayoutWorkspaces)
+        await runHeavyCompleteRefreshSession(
+            event,
+            cancellable: true,
+            optimisticallyPreLayoutWorkspaces: optimisticallyPreLayoutWorkspaces,
+        )
     }
 }
 
 @MainActor
-func runRefreshSessionBlocking(
+func runHeavyCompleteRefreshSession(
     _ event: RefreshSessionEvent,
+    cancellable: Bool,
     layoutWorkspaces shouldLayoutWorkspaces: Bool = true,
     optimisticallyPreLayoutWorkspaces: Bool = false,
-) async throws {
+) async {
     let state = signposter.beginInterval(#function, "event: \(event) axTaskLocalAppThreadToken: \(axTaskLocalAppThreadToken?.idForDebug)")
     defer { signposter.endInterval(#function, state) }
     if !TrayMenuModel.shared.isEnabled { return }
-    try await $refreshSessionEvent.withValue(event) {
-        try await $_isStartup.withValue(event.isStartup) {
-            let nativeFocused = try await getNativeFocusedWindow()
-            if let nativeFocused { try await debugWindowsIfRecording(nativeFocused) }
-            updateFocusCache(nativeFocused)
+    let res = await Result {
+        try await $refreshSessionEvent.withValue(event) {
+            try await $_isStartup.withValue(event.isStartup) {
+                let nativeFocused = try await getNativeFocusedWindow()
+                if let nativeFocused { try await debugWindowsIfRecording(nativeFocused) }
+                updateFocusCache(nativeFocused)
 
-            if shouldLayoutWorkspaces && optimisticallyPreLayoutWorkspaces { try await layoutWorkspaces() }
+                if shouldLayoutWorkspaces && optimisticallyPreLayoutWorkspaces { try await layoutWorkspaces() }
 
-            refreshModel()
-            try await refresh()
-            gcMonitors()
+                refreshModel()
+                try await refresh()
+                gcMonitors()
 
-            updateTrayText()
-            SecureInputPanel.shared.refresh()
-            try await normalizeLayoutReason()
-            if shouldLayoutWorkspaces { try await layoutWorkspaces() }
+                updateTrayText()
+                SecureInputPanel.shared.refresh()
+                try await normalizeLayoutReason()
+                if shouldLayoutWorkspaces { try await layoutWorkspaces() }
+            }
         }
+    }
+    switch res {
+        case .success(()): break
+        case .failure(let err as CancellationError): check(cancellable, "Non cancellable refresh session was canceled: \(err) (\(type(of: err)))")
+        case .failure(let err): die("Illegal error: \(err)")
     }
 }
 
@@ -74,7 +86,7 @@ func runLightSession<T>(
             if focusBefore != focusAfter {
                 focusAfter?.nativeFocus() // syncFocusToMacOs
             }
-            scheduleRefreshSession(event)
+            scheduleCancellableCompleteRefreshSession(event)
             return result
         }
     }
@@ -111,7 +123,7 @@ func refreshModel() {
 private func refresh() async throws {
     // Garbage collect terminated apps and windows before working with all windows
     let mapping = try await MacApp.refreshAllAndGetAliveWindowIds(frontmostAppBundleId: NSWorkspace.shared.frontmostApplication?.bundleIdentifier)
-    let aliveWindowIds = mapping.values.flatMap { $0 }.toSet()
+    let aliveWindowIds = mapping.values.flatMap(id).toSet()
 
     for window in MacWindow.allWindows {
         if !aliveWindowIds.contains(window.windowId) {
@@ -132,7 +144,7 @@ func refreshObs(_: AXObserver, _: AXUIElement, notif: CFString, _: UnsafeMutable
     let notif = notif as String
     Task { @MainActor in
         if !TrayMenuModel.shared.isEnabled { return }
-        scheduleRefreshSession(.ax(notif))
+        scheduleCancellableCompleteRefreshSession(.ax(notif))
     }
 }
 

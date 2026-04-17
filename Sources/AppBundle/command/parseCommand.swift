@@ -6,7 +6,7 @@ func parseCommand(_ raw: String) -> ParsedCmd<any Command> {
     }
     return switch raw.splitArgs() {
         case .success(let args): parseCommand(args)
-        case .failure(let fail): .failure(fail)
+        case .failure(let fail): .failure(fail, EXIT_CODE_TWO)
     }
 }
 
@@ -15,13 +15,12 @@ func parseCommand(_ args: [String]) -> ParsedCmd<any Command> {
 }
 
 func expectedActualTypeError(expected: TomlType, actual: TomlType) -> String {
-    "Expected type is '\(expected)'. But actual type is '\(actual)'"
+    "Expected type is \(expected.rawValue.singleQuoted). But actual type is \(actual.rawValue.singleQuoted)"
 }
 
 func expectedActualTypeError(expected: [TomlType], actual: TomlType) -> String {
-    if let single = expected.singleOrNil() {
-        return expectedActualTypeError(expected: single, actual: actual)
-    } else {
-        return "Expected types are \(expected.map { "'\($0)'" }.joined(separator: " or ")). But actual type is '\(actual)'"
+    switch expected.singleOrNil() {
+        case let single?: expectedActualTypeError(expected: single, actual: actual)
+        case nil: "Expected types are \(expected.map { "'\($0)'" }.joined(separator: " or ")). But actual type is '\(actual)'"
     }
 }

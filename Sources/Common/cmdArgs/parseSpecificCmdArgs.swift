@@ -47,44 +47,13 @@ func parseSpecificCmdArgs<T: CmdArgs>(_ raw: T, _ args: StrArrSlice) -> ParsedCm
     return errors.isEmpty ? .cmd(raw) : .failure(errors.joinErrors())
 }
 
-public enum ParsedCmd<T: Sendable>: Sendable {
-    case cmd(T)
-    case help(String)
-    case failure(String)
+public struct CmdParsingFailure: Sendable, Equatable {
+    public let msg: String
+    public let exitCode: Int32
 
-    public func map<R>(_ mapper: (T) -> R) -> ParsedCmd<R> {
-        flatMap { .cmd(mapper($0)) }
-    }
-
-    public func filter(_ msg: @autoclosure () -> String, _ predicate: (T) -> Bool) -> ParsedCmd<T> {
-        flatMap { this in predicate(this) ? .cmd(this) : .failure(msg()) }
-    }
-
-    public func filterNot(_ msg: @autoclosure () -> String, _ predicate: (T) -> Bool) -> ParsedCmd<T> {
-        flatMap { this in !predicate(this) ? .cmd(this) : .failure(msg()) }
-    }
-
-    public func flatMap<R>(_ mapper: (T) -> ParsedCmd<R>) -> ParsedCmd<R> {
-        return switch self {
-            case .cmd(let cmd): mapper(cmd)
-            case .help(let help): .help(help)
-            case .failure(let fail): .failure(fail)
-        }
-    }
-
-    public var cmdOrNil: T? {
-        switch self {
-            case .cmd(let t): t
-            default: nil
-        }
-    }
-
-    public func unwrap() -> (T?, String?, String?) {
-        switch self {
-            case .cmd(let command):   (command, nil, nil)
-            case .help(let help):     (nil, help, nil)
-            case .failure(let error): (nil, nil, error)
-        }
+    public init(_ msg: String, _ exitCode: Int32) {
+        self.msg = msg
+        self.exitCode = exitCode
     }
 }
 
@@ -92,10 +61,9 @@ extension ArgParserProtocol where Root: ConvenienceCopyable {
     fileprivate func transformRaw(_ raw: consuming Root, _ index: inout Int, _ input: Input, _ errors: inout [String]) -> Root {
         let parsedCliArgs = parse(input)
         index += parsedCliArgs.advanceBy
-        if let value = parsedCliArgs.value.getOrNil(appendErrorTo: &errors) {
-            return raw.copy(keyPath, value)
-        } else {
-            return raw
+        return switch parsedCliArgs.value.getOrNil(appendErrorTo: &errors) {
+            case let value?: raw.copy(keyPath, value)
+            case nil: raw
         }
     }
 }
