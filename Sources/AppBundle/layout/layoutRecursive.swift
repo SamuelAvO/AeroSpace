@@ -372,23 +372,23 @@ extension TilingContainer {
     fileprivate func calcFittingScrollingPosition(
         _ sizes: [CGFloat], _ orientationSize: CGFloat, _ totalSize: CGFloat
     ) -> ScrollingPosition {
-        let addToAllWindows = (orientationSize - totalSize) / CGFloat(children.count)
+        let extraSpace = orientationSize - totalSize
 
         var offset: CGFloat = 0.0
         var responseSizes = sizes
 
         if totalSize < orientationSize {
-            // Stretch align when not filling all space. TODO add config
-            offset = 0
-            for i in 0 ..< sizes.count {
-                responseSizes[i] = sizes[i] + addToAllWindows
+            if config.stretchScrollingLayout {
+                offset = 0
+                responseSizes = sizes.map { size in
+                    let weight = size / totalSize
+                    return size + (extraSpace * weight)
+                }
+            } else {
+                // Center align when not filling all space
+                offset = extraSpace / 2
             }
-            responseSizes = sizes.map({$0 + addToAllWindows})
-        } else if totalSize < orientationSize {
-            // Center align when not filling all space
-            offset = (orientationSize - totalSize) / 2
         }
-        
 
         return ScrollingPosition(start: 0, end: children.count, offset: offset, sizes: responseSizes)
     }

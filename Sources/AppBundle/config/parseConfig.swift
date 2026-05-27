@@ -110,6 +110,9 @@ private let configParser: [String: any ParserProtocol<Config>] = [
     "default-root-container-layout": Parser(\.defaultRootContainerLayout, parseLayout),
     "default-root-container-orientation": Parser(\.defaultRootContainerOrientation, parseDefaultContainerOrientation),
 
+    "stretch-scrolling-layout": Parser(\.stretchScrollingLayout, parseBool),
+    "predefined-resize-targets": Parser(\.predefinedResizeTargets, parseArrayOfFloats),
+
     "start-at-login": Parser(\.startAtLogin, parseBool),
     "auto-reload-config": Parser(\.autoReloadConfig, parseBool),
     "automatically-unhide-macos-hidden-apps": Parser(\.automaticallyUnhideMacosHiddenApps, parseBool),
@@ -282,6 +285,13 @@ func parseInt(_ raw: Json, _ backtrace: ConfigBacktrace) -> ParsedConfig<Int> {
     raw.asIntOrNil.orFailure(expectedActualTypeError(expected: .int, actual: raw.tomlType, backtrace))
 }
 
+func parseDouble(_ raw: Json, _ backtrace: ConfigBacktrace) -> ParsedConfig<Double> {
+    raw.asDoubleOrNil.orFailure(expectedActualTypeError(expected: .int, actual: raw.tomlType, backtrace))
+}
+func parseFloat(_ raw: Json, _ backtrace: ConfigBacktrace) -> ParsedConfig<Float> {
+    raw.asFloatOrNil.orFailure(expectedActualTypeError(expected: .int, actual: raw.tomlType, backtrace))
+}
+
 func parseString(_ raw: Json, _ backtrace: ConfigBacktrace) -> ParsedConfig<String> {
     raw.asStringOrNil.orFailure(expectedActualTypeError(expected: .string, actual: raw.tomlType, backtrace))
 }
@@ -358,6 +368,15 @@ private func parseArrayOfStrings(_ raw: Json, _ backtrace: ConfigBacktrace) -> P
         .flatMap { arr in
             arr.enumerated().mapAllOrFailure { (index, elem) in
                 parseString(elem, backtrace + .index(index))
+            }
+        }
+}
+
+private func parseArrayOfFloats(_ raw: Json, _ backtrace: ConfigBacktrace) -> ParsedConfig<[Float]> {
+    parseTomlArray(raw, backtrace)
+        .flatMap { arr in
+            arr.enumerated().mapAllOrFailure { (index, elem) in
+                parseFloat(elem, backtrace + .index(index))
             }
         }
 }

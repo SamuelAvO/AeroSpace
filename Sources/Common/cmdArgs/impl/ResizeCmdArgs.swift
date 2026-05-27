@@ -36,7 +36,7 @@ public struct ResizeCmdArgs: CmdArgs {
         case set(UInt)
         case add(UInt)
         case subtract(UInt)
-        case predefined([Float])
+        case predefined(UInt)
     }
 }
 
@@ -56,7 +56,7 @@ private func parseUnits(i: PosArgParserInput) -> ParsedCliArgs<ResizeCmdArgs.Uni
             default: .succ(.set(number), advanceBy: 1)
         }
     } else if i.arg == "predefined" {
-        .succ(.predefined([1 / 3, 0.5, 2 / 3, 1.0]), advanceBy: 1)  // TODO make configurable (and also add hardcoded pixel size support?)
+        .succ(.predefined(1), advanceBy: 1)
     } else {
         .fail("<number> argument must be a number", advanceBy: 1)
     }
