@@ -50,9 +50,9 @@ private func resizeWithMouse(_ window: Window) async throws { // todo cover with
 
             currentlyManipulatedWithMouseWindowId = window.windowId
 
-            if (parent as! TilingContainer).layout == .scrolling {
-                let tilingParent = parent as! TilingContainer
-                resizeActualWindow(parent: parent as! TilingContainer, window: window, diff: rect.getDimension(tilingParent.orientation)
+            if (window.parent as! TilingContainer).layout == .scrolling {
+                let tilingParent = window.parent as! TilingContainer
+                resizeActualWindow(parent: window.parent as! TilingContainer, window: window, diff: rect.getDimension(tilingParent.orientation)
                         - lastAppliedLayoutRect.getDimension(tilingParent.orientation))
                 return
             }
