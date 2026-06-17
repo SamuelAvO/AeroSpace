@@ -11,6 +11,7 @@ enum OrderedJson: Encodable, Equatable { // todo rename to Dto (data transfer ob
     case null
     case string(String)
     case int(Int64)
+    case double(Double)
     case bool(Bool)
 
     typealias JsonDict = OrderedDictionary<String, OrderedJson>
@@ -22,6 +23,7 @@ enum OrderedJson: Encodable, Equatable { // todo rename to Dto (data transfer ob
             case .dict(let value): try value.encode(to: encoder)
             case .string(let value): try value.encode(to: encoder)
             case .int(let value): try value.encode(to: encoder)
+            case .double(let value): try value.encode(to: encoder)
             case .bool(let value): try value.encode(to: encoder)
             case .null: try (nil as String?).encode(to: encoder)
         }
@@ -35,6 +37,7 @@ enum OrderedJson: Encodable, Equatable { // todo rename to Dto (data transfer ob
 
             case .bool(let bool): .bool(bool)
             case .int(let int): .int(int)
+            case .double(let double): .double(double)
             case .string(let string): .string(string)
             case .null: .null
         }
@@ -46,6 +49,14 @@ enum OrderedJson: Encodable, Equatable { // todo rename to Dto (data transfer ob
 
     var asIntOrNil: Int? {
         asInt64OrNil.flatMap { Int.init(exactly: $0) }
+    }
+
+    var asDoubleOrNil: Double? {
+        if case .double(let value) = self { value } else { nil }
+    }
+
+    var asFloatOrNil: Float? {
+        if case .double(let value) = self { Float(value) } else { nil }
     }
 
     var asStringOrNil: String? {
@@ -71,6 +82,7 @@ enum OrderedJson: Encodable, Equatable { // todo rename to Dto (data transfer ob
             case .null: return .null
             case .string: return .string
             case .int: return .int
+            case .double: return .double
             case .bool: return .bool
         }
     }
@@ -84,4 +96,5 @@ enum TomlType: String {
     case string = "String"
     case int = "Int"
     case bool = "Bool"
+    case double = "Double"
 }

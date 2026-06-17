@@ -116,19 +116,4 @@ enum Json: Encodable, Equatable {
             case .bool: return .bool
         }
     }
-
-    var asDictOrNil: JsonDict? {
-        if case .dict(let value) = self { value } else { nil }
-    }
-}
-
-enum TomlType: String {
-    case table
-    case array
-
-    case null
-    case string
-    case int
-    case double
-    case bool
 }
