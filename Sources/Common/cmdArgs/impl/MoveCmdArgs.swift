@@ -9,6 +9,8 @@ public struct MoveCmdArgs: CmdArgs {
             "--window-id": windowIdSubArgParser(),
             "--boundaries": ArgParser(\.rawBoundaries, upcastArgParserFun(parseBoundaries)),
             "--boundaries-action": ArgParser(\.rawBoundariesAction, upcastArgParserFun(parseBoundariesAction)),
+            "--fail-if-fullscreen": trueBoolFlag(\.failIfFullscreen),
+            "--fail-if-macos-native-fullscreen": trueBoolFlag(\.failIfMacosNativeFullscreen),
         ],
         posArgs: [newMandatoryPosArgParser(\.direction, parseCardinalDirectionArg, placeholder: CardinalDirection.unionLiteral)],
     )
@@ -16,11 +18,8 @@ public struct MoveCmdArgs: CmdArgs {
     public var direction: Lateinit<CardinalDirection> = .uninitialized
     public var rawBoundaries: Boundaries? = nil
     public var rawBoundariesAction: WhenBoundariesCrossed? = nil
-
-    public init(rawArgs: [String], _ direction: CardinalDirection) {
-        self.commonState = .init(rawArgs.slice)
-        self.direction = .initialized(direction)
-    }
+    public var failIfFullscreen: Bool = false
+    public var failIfMacosNativeFullscreen: Bool = false
 
     public enum Boundaries: String, CaseIterable, Equatable, Sendable {
         case workspace

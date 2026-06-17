@@ -5,14 +5,21 @@ struct MoveCommand: Command {
     let args: MoveCmdArgs
     /*conforms*/ let shouldResetClosedWindowsCache = true
 
-    func run(_ env: CmdEnv, _ io: CmdIo) -> BinaryExitCode {
+    func run(_ env: CmdEnv, _ io: CmdIo) async throws -> BinaryExitCode {
         let direction = args.direction.val
         guard let target = args.resolveTargetOrReportError(env, io) else { return .fail }
         guard let currentWindow = target.windowOrNil else {
             return .fail(io.err(noWindowIsFocused))
         }
-        guard let parent = currentWindow.parent else { return .fail }
-        switch parent.cases {
+        if try await shouldFailBecauseFullscreen(
+            window: currentWindow,
+            failIfFullscreen: args.failIfFullscreen,
+            failIfMacosNativeFullscreen: args.failIfMacosNativeFullscreen,
+        ) {
+            return .fail
+        }
+        switch currentWindow.windowParentCases {
+            case .unbound: return .fail
             case .tilingContainer(let parent):
                 let indexOfCurrent = currentWindow.ownIndex.orDie()
                 let indexOfSiblingTarget = indexOfCurrent + direction.focusOffset
@@ -26,14 +33,14 @@ struct MoveCommand: Command {
                             return .succ
                     }
                 } else {
-                    return moveOut(window: currentWindow, direction: direction, io, args, env)
+                    return moveOut(tilingWindow: currentWindow, direction: direction, io, args, env)
                 }
-            case .workspace: // floating window
+            case .floatingWindowsContainer: // floating window
                 return .fail(io.err("moving floating windows isn't yet supported")) // todo
             case .macosMinimizedWindowsContainer, .macosFullscreenWindowsContainer, .macosHiddenAppsWindowsContainer:
                 return .fail(io.err(moveOutMacosUnconventionalWindow))
             case .macosPopupWindowsContainer:
-                return .fail // Impossible
+                return .fail(io.err(bugPrompt())) // Impossible
         }
     }
 }
@@ -90,34 +97,35 @@ struct MoveCommand: Command {
 private let moveOutMacosUnconventionalWindow = "moving macOS fullscreen, minimized windows and windows of hidden apps isn't yet supported. This behavior is subject to change"
 
 @MainActor private func moveOut(
-    window: Window,
+    tilingWindow window: Window,
     direction: CardinalDirection,
     _ io: CmdIo,
     _ args: MoveCmdArgs,
     _ env: CmdEnv,
 ) -> BinaryExitCode {
-    let innerMostChild = window.parents.first(where: {
+    let innerMostTilingContainer = window.parents.first(where: {
         return switch $0.parent?.cases {
             case .tilingContainer(let parent): parent.orientation == direction.orientation
-            // Stop searching
-            case .workspace, .macosMinimizedWindowsContainer, nil, .macosFullscreenWindowsContainer,
-                 .macosHiddenAppsWindowsContainer, .macosPopupWindowsContainer: true
+            // Stop searching: we have hit the workspace
+            case nil, .workspace: true
+            // Impossible: tilingContainer's parent can only be a workspace or tilingContainer
+            case .floatingWindowsContainer,
+                 .macosMinimizedWindowsContainer,
+                 .macosFullscreenWindowsContainer,
+                 .macosHiddenAppsWindowsContainer,
+                 .macosPopupWindowsContainer: true
         }
     }) as? TilingContainer
-    guard let innerMostChild else { return .fail }
-    guard let parent = innerMostChild.parent else { return .fail }
-    switch parent.cases {
+    guard let innerMostTilingContainer else { return .fail(io.err(bugPrompt())) } // Impossible
+    switch innerMostTilingContainer.tilingContainerParentCases {
+        case .unbound: return .fail
         case .tilingContainer(let parent):
             check(parent.orientation == direction.orientation)
-            guard let ownIndex = innerMostChild.ownIndex else { return .fail }
+            guard let ownIndex = innerMostTilingContainer.ownIndex else { return .fail }
             window.bind(to: parent, adaptiveWeight: WEIGHT_AUTO, index: ownIndex + direction.insertionOffset)
             return .succ
         case .workspace(let parent):
             return hitWorkspaceBoundaries(window, parent, io, args, direction, env)
-        case .macosMinimizedWindowsContainer, .macosFullscreenWindowsContainer, .macosHiddenAppsWindowsContainer:
-            return .fail(io.err(moveOutMacosUnconventionalWindow))
-        case .macosPopupWindowsContainer:
-            return .fail // Impossible
     }
 }
 
@@ -164,4 +172,20 @@ extension TilingTreeNodeCases {
                     .findDeepMoveInTargetRecursive(orientation)
         }
     }
+}
+
+func shouldFailBecauseFullscreen(
+    window: Window,
+    failIfFullscreen: Bool,
+    failIfMacosNativeFullscreen: Bool,
+) async throws -> Bool {
+    if failIfFullscreen && window.isFullscreen {
+        return true
+    }
+    if failIfMacosNativeFullscreen {
+        if try await window.isMacosFullscreen {
+            return true
+        }
+    }
+    return false
 }

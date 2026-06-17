@@ -11,11 +11,24 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene { // todo should it 
         Button("Copy to clipboard") { identification.copyToClipboard() }
             .keyboardShortcut("C", modifiers: .command)
         Divider()
+        if let token: RunSessionGuard = .isServerEnabled, viewModel.lastReloadConfigContainedWarnings {
+            Button {
+                Task.startUnstructured {
+                    try await runLightSession(.menuBarButton, token) {
+                        let args: ReloadConfigCmdArgs = ReloadConfigCmdArgs(rawArgs: []).copy(\.warningsAsErrors, true)
+                        _ = try await reloadConfig(args: args)
+                    }
+                }
+            } label: {
+                Label("Config contains warnings...", systemImage: "exclamationmark.triangle.fill")
+            }
+            Divider()
+        }
         if let token: RunSessionGuard = .isServerEnabled {
             Text("Workspaces:")
             ForEach(viewModel.workspaces, id: \.name) { workspace in
                 Button {
-                    Task {
+                    Task.startUnstructured {
                         try await runLightSession(.menuBarButton, token) { _ = Workspace.get(byName: workspace.name).focusWorkspace() }
                     }
                 } label: {
@@ -35,7 +48,7 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene { // todo should it 
         }
         Divider()
         Button(viewModel.isEnabled ? "Disable" : "Enable") {
-            Task {
+            Task.startUnstructured {
                 try await runLightSession(.menuBarButton, .forceRun) { () throws in
                     _ = try await EnableCommand(args: EnableCmdArgs(rawArgs: [], targetState: .toggle))
                         .run(.defaultEnv, .emptyStdin)
@@ -44,11 +57,11 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene { // todo should it 
         }.keyboardShortcut("E", modifiers: .command)
         getExperimentalUISettingsMenu(viewModel: viewModel)
         openConfigButton()
-        reloadConfigButton()
+        reloadConfigButton(warningsAsErrors: false)
         Button("Quit \(aeroSpaceAppName)") {
-            Task {
-                defer { terminateApp() }
-                try await terminationHandler.beforeTermination()
+            Task.startUnstructured {
+                terminationHandler?.beforeTermination()
+                terminateApp()
             }
         }.keyboardShortcut("Q", modifiers: .command)
     } label: {
@@ -84,11 +97,14 @@ func openConfigButton(showShortcutGroup: Bool = false) -> some View {
 }
 
 @MainActor @ViewBuilder
-func reloadConfigButton(showShortcutGroup: Bool = false) -> some View {
+func reloadConfigButton(showShortcutGroup: Bool = false, warningsAsErrors: Bool) -> some View {
     if let token: RunSessionGuard = .isServerEnabled {
         let button = Button("Reload config") {
-            Task {
-                try await runLightSession(.menuBarButton, token) { _ = try await reloadConfig() }
+            Task.startUnstructured {
+                try await runLightSession(.menuBarButton, token) {
+                    let args: ReloadConfigCmdArgs = ReloadConfigCmdArgs(rawArgs: []).copy(\.warningsAsErrors, warningsAsErrors)
+                    _ = try await reloadConfig(args: args)
+                }
             }
         }.keyboardShortcut("R", modifiers: .command)
         switch showShortcutGroup {

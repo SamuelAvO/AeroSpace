@@ -35,8 +35,7 @@ open class Window: TreeNode, Hashable {
     var isMacosFullscreen: Bool { get async throws { false } }
     var isMacosMinimized: Bool { get async throws { false } } // todo replace with enum MacOsWindowNativeState { normal, fullscreen, invisible }
     var isHiddenInCorner: Bool { die("Not implemented") }
-    @MainActor
-    func nativeFocus() { die("Not implemented") }
+    @MainActor func nativeFocus() { die("Not implemented") }
     func getAxRect() async throws -> Rect? { die("Not implemented") }
     func getCenter() async throws -> CGPoint? { try await getAxRect()?.center }
 
@@ -50,12 +49,22 @@ enum LayoutReason: Equatable {
 }
 
 extension Window {
-    var isFloating: Bool { parent is Workspace } // todo drop. It will be a source of bugs when sticky is introduced
+    var isFloating: Bool { // todo drop. It will be a source of bugs when sticky is introduced
+        switch windowParentCases {
+            case .floatingWindowsContainer: true
+            case .macosFullscreenWindowsContainer: false
+            case .macosHiddenAppsWindowsContainer: false
+            case .macosMinimizedWindowsContainer: false
+            case .macosPopupWindowsContainer: false
+            case .tilingContainer: false
+            case .unbound: false
+        }
+    }
 
     @discardableResult
     @MainActor
     func bindAsFloatingWindow(to workspace: Workspace) -> BindingData? {
-        bind(to: workspace, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST)
+        bind(to: workspace.floatingWindowsContainer, adaptiveWeight: WEIGHT_AUTO, index: INDEX_BIND_LAST)
     }
 
     func asMacWindow() -> MacWindow { self as! MacWindow }

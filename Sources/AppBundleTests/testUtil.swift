@@ -51,7 +51,7 @@ extension ParsedCmd {
     var cmdOrDie: T { cmdOrNil ?? dieT("\(self)") }
 }
 
-func testParseCommandFail(_ command: String, msg expectedMsg: String, exitCode expectedExitCode: Int32, file: String = #filePath, line: Int = #line) {
+func testParseCommandFail(_ command: String, msg expectedMsg: String, exitCode expectedExitCode: Int32, file: StaticString = #filePath, line: UInt = #line) {
     let parsed = parseCommand(command)
     switch parsed {
         case .cmd(let command): XCTFail("\(command) isn't supposed to be parcelable")
@@ -89,5 +89,11 @@ extension HotkeyBinding {
             ? keyCode.toString()
             : modifiers.toString() + "-" + keyCode.toString()
         self.init(modifiers, keyCode, commands, descriptionWithKeyNotation: descriptionWithKeyNotation)
+    }
+}
+
+extension FocusCommand {
+    static func new(direction: CardinalDirection) -> FocusCommand {
+        FocusCommand(args: FocusCmdArgs(rawArgs: [], cardinalOrDfsDirection: .direction(direction)))
     }
 }

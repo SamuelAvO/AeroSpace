@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 cd "$(dirname "$0")"
 source ./script/setup.sh
 
@@ -16,7 +16,7 @@ done
 ### BUILD ###
 #############
 
-./build-docs.sh
+./build-docs.sh --release
 ./build-shell-completion.sh
 
 ./generate.sh

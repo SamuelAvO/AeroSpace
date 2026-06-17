@@ -47,7 +47,7 @@ struct SwapCommand: Command {
             return .fail
         }
 
-        swapWindows(currentWindow, targetWindow, tree: target.workspace.rootTilingContainer)
+        swapWindows(mruDominant: currentWindow, targetWindow, tree: target.workspace.rootTilingContainer)
 
         if args.swapFocus {
             return .from(bool: targetWindow.focusWindow())
