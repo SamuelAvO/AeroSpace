@@ -67,19 +67,20 @@ private func moveTilingWindow(_ window: Window) {
             index: index,
         )
     } else if let swapTarget {
-        swapWindows(mruDominant: window, swapTarget)
+        swapWindows(mruDominant: window, swapTarget, tree: targetWorkspace.rootTilingContainer)
     }
 }
 
 @MainActor
-func swapWindows(mruDominant window1: Window, _ window2: Window) {
+func swapWindows(mruDominant window1: Window, _ window2: Window, tree: TilingContainer) {
     if window1 == window2 { return }
 
+    
     let binding2 = window2.unbindFromParent()
     let binding1 = window1.unbindFromParent()
-
-    window2.bind(to: binding1.parent, adaptiveWeight: binding1.adaptiveWeight, index: binding1.index)
-    window1.bind(to: binding2.parent, adaptiveWeight: binding2.adaptiveWeight, index: binding2.index)
+    
+    window2.bind(to: binding1.parent, adaptiveWeight: tree.layout == .scrolling ? binding2.adaptiveWeight : binding1.adaptiveWeight, index: binding1.index)
+    window1.bind(to: binding2.parent, adaptiveWeight: tree.layout == .scrolling ? binding1.adaptiveWeight : binding2.adaptiveWeight, index: binding2.index)
 }
 
 extension CGPoint {
@@ -88,6 +89,10 @@ extension CGPoint {
         let point = self
         let target: TreeNode? = switch tree.layout {
             case .tiles:
+                tree.children.first(where: {
+                    (virtual ? $0.lastAppliedLayoutVirtualRect : $0.lastAppliedLayoutPhysicalRect)?.contains(point) == true
+                })
+            case .scrolling:
                 tree.children.first(where: {
                     (virtual ? $0.lastAppliedLayoutVirtualRect : $0.lastAppliedLayoutPhysicalRect)?.contains(point) == true
                 })

@@ -45,12 +45,18 @@ struct LayoutCommand: Command {
                 return changeTilingLayout(io, targetLayout: .accordion, targetOrientation: .h, node: node)
             case .v_accordion:
                 return changeTilingLayout(io, targetLayout: .accordion, targetOrientation: .v, node: node)
+            case .h_scrolling:
+                return changeTilingLayout(io, targetLayout: .scrolling, targetOrientation: .h, node: node)
+            case .v_scrolling:
+                return changeTilingLayout(io, targetLayout: .scrolling, targetOrientation: .v, node: node)
             case .h_tiles:
                 return changeTilingLayout(io, targetLayout: .tiles, targetOrientation: .h, node: node)
             case .v_tiles:
                 return changeTilingLayout(io, targetLayout: .tiles, targetOrientation: .v, node: node)
             case .accordion:
                 return changeTilingLayout(io, targetLayout: .accordion, targetOrientation: nil, node: node)
+            case .scrolling:
+                return changeTilingLayout(io, targetLayout: .scrolling, targetOrientation: nil, node: node)
             case .tiles:
                 return changeTilingLayout(io, targetLayout: .tiles, targetOrientation: nil, node: node)
             case .horizontal:
@@ -100,11 +106,14 @@ extension ConventionalWindowParentCases {
     fileprivate func matchesDescription(_ layout: LayoutCmdArgs.LayoutDescription) -> Bool {
         return switch layout {
             case .accordion:   tilingContainerOrNil?.layout == .accordion
+            case .scrolling:   tilingContainerOrNil?.layout == .scrolling
             case .tiles:       tilingContainerOrNil?.layout == .tiles
             case .horizontal:  tilingContainerOrNil?.orientation == .h
             case .vertical:    tilingContainerOrNil?.orientation == .v
             case .h_accordion: tilingContainerOrNil.map { $0.layout == .accordion && $0.orientation == .h } == true
             case .v_accordion: tilingContainerOrNil.map { $0.layout == .accordion && $0.orientation == .v } == true
+            case .h_scrolling: tilingContainerOrNil.map { $0.layout == .scrolling && $0.orientation == .h } == true
+            case .v_scrolling: tilingContainerOrNil.map { $0.layout == .scrolling && $0.orientation == .v } == true
             case .h_tiles:     tilingContainerOrNil.map { $0.layout == .tiles && $0.orientation == .h } == true
             case .v_tiles:     tilingContainerOrNil.map { $0.layout == .tiles && $0.orientation == .v } == true
             case .tiling:      tilingContainerOrNil != nil

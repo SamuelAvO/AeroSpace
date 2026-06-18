@@ -9,7 +9,7 @@ struct ResizeCommand: Command {
         guard let target = args.resolveTargetOrReportError(env, io) else { return .fail }
 
         let candidates = target.windowOrNil?.parentsWithSelf
-            .filter { ($0.parent as? TilingContainer)?.layout == .tiles }
+            .filter { ($0.parent as? TilingContainer)?.layout == .tiles || ($0.parent as? TilingContainer)?.layout == .scrolling }
             ?? []
 
         let orientation: Orientation?
@@ -42,13 +42,40 @@ struct ResizeCommand: Command {
             case .set(let unit): CGFloat(unit) - node.getWeight(orientation)
             case .add(let unit): CGFloat(unit)
             case .subtract(let unit): -CGFloat(unit)
+            case .predefined(_):
+                {
+                    // Use configured values
+                    let effectiveUnits = config.predefinedResizeTargets
+
+                    var diff: CGFloat = 0
+                    let parentSize: CGFloat = parent.getWeight(orientation)
+                    let nodeSize = node.getWeight(orientation)
+                    let padding = CGFloat(config.accordionPadding)
+                    let availableSpace = parentSize - padding
+
+                    // Convert all targets to absolute pixel values and sort them smallest to largest.
+                    let targetPixels = effectiveUnits.map { unit -> CGFloat in
+                        let size = unit > 1.0 ? CGFloat(unit) : availableSpace * CGFloat(unit)
+                        return min(size, availableSpace) // trim to parent view size
+                    }.sorted()
+
+                    // Find the first target size that is greater than or equal to the current nodeSize.
+                    // If no such target exists, we use the smallest available target.
+                    if let nextTarget = targetPixels.first(where: { $0 > nodeSize + 1 }) {
+                        diff = nextTarget - nodeSize
+                    } else if let largestTarget = targetPixels.first {
+                        diff = largestTarget - nodeSize
+                    }
+                    return diff
+                }()
+            }
+
+        if parent.layout == .tiles {
+            guard let childDiff = diff.div(parent.children.count - 1) else { return .fail }
+            parent.children.lazy
+                .filter { $0 != node }
+                .forEach { $0.setWeight(parent.orientation, $0.getWeight(parent.orientation) - childDiff) }
         }
-
-        guard let childDiff = diff.div(parent.children.count - 1) else { return .fail }
-        parent.children.lazy
-            .filter { $0 != node }
-            .forEach { $0.setWeight(parent.orientation, $0.getWeight(parent.orientation) - childDiff) }
-
         node.setWeight(orientation, node.getWeight(orientation) + diff)
         return .succ
     }

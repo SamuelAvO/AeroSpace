@@ -10,7 +10,7 @@ public struct ResizeCmdArgs: CmdArgs {
         ],
         posArgs: [
             newMandatoryPosArgParser(\.dimension, parseDimension, placeholder: "(smart|smart-opposite|width|height)"),
-            newMandatoryPosArgParser(\.units, parseUnits, placeholder: "[+|-]<number>"),
+            newMandatoryPosArgParser(\.units, parseUnits, placeholder: "[+|-]<number>|predefined"),
         ],
     )
 
@@ -36,6 +36,7 @@ public struct ResizeCmdArgs: CmdArgs {
         case set(UInt)
         case add(UInt)
         case subtract(UInt)
+        case predefined(UInt)
     }
 }
 
@@ -54,6 +55,8 @@ private func parseUnits(i: PosArgParserInput) -> ParsedCliArgs<ResizeCmdArgs.Uni
             case i.arg.starts(with: "-"): .succ(.subtract(number), advanceBy: 1)
             default: .succ(.set(number), advanceBy: 1)
         }
+    } else if i.arg == "predefined" {
+        .succ(.predefined(1), advanceBy: 1)
     } else {
         .fail("<number> argument must be a number", advanceBy: 1)
     }

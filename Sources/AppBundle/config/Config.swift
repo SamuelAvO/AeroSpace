@@ -34,16 +34,18 @@ var defaultConfigUrl: URL {
 
 struct Config: ConvenienceCopyable {
     var configVersion: Int = 1
+    var predefinedResizeTargets: [Float] = [1 / 3, 0.5, 2 / 3, 1.0]
     var afterLoginCommand: [any Command] = []
     var afterStartupCommand: [any Command] = []
     var _indentForNestedContainersWithTheSameOrientation: Void = ()
     var enableNormalizationFlattenContainers: Bool = true
     var _nonEmptyWorkspacesRootContainersLayoutOnStartup: Void = ()
-    var defaultRootContainerLayout: Layout = .tiles
+    var defaultRootContainerLayout: Layout = .scrolling
     var defaultRootContainerOrientation: DefaultContainerOrientation = .auto
     var startAtLogin: Bool = false
     var autoReloadConfig: Bool = false
     var automaticallyUnhideMacosHiddenApps: Bool = false
+    var stretchScrollingLayout: Bool = false
     var accordionPadding: Int = 30
     var enableNormalizationOppositeOrientationForNestedContainers: Bool = true
     var persistentWorkspaces: OrderedSet<String> = []

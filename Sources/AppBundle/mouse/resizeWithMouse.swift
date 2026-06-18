@@ -47,10 +47,13 @@ private func resizeWithMouse(_ window: Window) async throws { // todo cover with
         case .tilingContainer:
             guard let rect = try await window.getAxRect() else { return }
             guard let lastAppliedLayoutRect = window.lastAppliedLayoutPhysicalRect else { return }
-            let (lParent, lOwnIndex) = window.closestParent(hasChildrenInDirection: .left, withLayout: .tiles) ?? (nil, nil)
-            let (dParent, dOwnIndex) = window.closestParent(hasChildrenInDirection: .down, withLayout: .tiles) ?? (nil, nil)
-            let (uParent, uOwnIndex) = window.closestParent(hasChildrenInDirection: .up, withLayout: .tiles) ?? (nil, nil)
-            let (rParent, rOwnIndex) = window.closestParent(hasChildrenInDirection: .right, withLayout: .tiles) ?? (nil, nil)
+
+            currentlyManipulatedWithMouseWindowId = window.windowId
+
+            let (lParent, lOwnIndex) = window.closestParent(hasChildrenInDirection: .left, withLayout: [.tiles, .scrolling]) ?? (nil, nil)
+            let (dParent, dOwnIndex) = window.closestParent(hasChildrenInDirection: .down, withLayout: [.tiles, .scrolling]) ?? (nil, nil)
+            let (uParent, uOwnIndex) = window.closestParent(hasChildrenInDirection: .up, withLayout: [.tiles, .scrolling]) ?? (nil, nil)
+            let (rParent, rOwnIndex) = window.closestParent(hasChildrenInDirection: .right, withLayout: [.tiles, .scrolling]) ?? (nil, nil)
             let table: [(CGFloat, TilingContainer?, Int?, Int?)] = [
                 (lastAppliedLayoutRect.minX - rect.minX, lParent, 0,                        lOwnIndex),               // Horizontal, to the left of the window
                 (rect.maxY - lastAppliedLayoutRect.maxY, dParent, dOwnIndex.map { $0 + 1 }, dParent?.children.count), // Vertical, to the down of the window
@@ -59,23 +62,29 @@ private func resizeWithMouse(_ window: Window) async throws { // todo cover with
             ]
             for (diff, parent, startIndex, pastTheEndIndex) in table {
                 if let parent, let startIndex, let pastTheEndIndex, pastTheEndIndex - startIndex > 0 && abs(diff) > 5 { // 5 pixels should be enough to fight with accumulated floating precision error
-                    let siblingDiff = diff.div(pastTheEndIndex - startIndex).orDie()
-                    let orientation = parent.orientation
-
-                    window.parentsWithSelf.lazy
-                        .prefix(while: { $0 != parent })
-                        .filter {
-                            let parent = $0.parent as? TilingContainer
-                            return parent?.orientation == orientation && parent?.layout == .tiles
+                    resizeActualWindow(parent: parent, window: window, diff: diff)
+                    if parent.layout == .tiles {
+                        let siblingDiff = diff.div(pastTheEndIndex - startIndex).orDie()
+                        for sibling in parent.children[startIndex ..< pastTheEndIndex] {
+                            sibling.setWeight(parent.orientation, sibling.getWeightBeforeResize(parent.orientation) - siblingDiff)
                         }
-                        .forEach { $0.setWeight(orientation, $0.getWeightBeforeResize(orientation) + diff) }
-                    for sibling in parent.children[startIndex ..< pastTheEndIndex] {
-                        sibling.setWeight(orientation, sibling.getWeightBeforeResize(orientation) - siblingDiff)
                     }
                 }
             }
-            currentlyManipulatedWithMouseWindowId = window.windowId
     }
+}
+
+@MainActor
+private func resizeActualWindow(parent: TilingContainer, window: Window, diff: CGFloat) {
+    let orientation = parent.orientation
+
+    window.parentsWithSelf.lazy
+        .prefix(while: { $0 != parent })
+        .filter {
+            let parent = $0.parent as? TilingContainer
+            return parent?.orientation == orientation && (parent?.layout == .tiles || parent?.layout == .scrolling)
+        }
+        .forEach { $0.setWeight(orientation, $0.getWeightBeforeResize(orientation) + diff) }
 }
 
 extension TreeNode {
