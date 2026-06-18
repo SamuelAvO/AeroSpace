@@ -50,17 +50,10 @@ private func resizeWithMouse(_ window: Window) async throws { // todo cover with
 
             currentlyManipulatedWithMouseWindowId = window.windowId
 
-            if (window.parent as! TilingContainer).layout == .scrolling {
-                let tilingParent = window.parent as! TilingContainer
-                resizeActualWindow(parent: window.parent as! TilingContainer, window: window, diff: rect.getDimension(tilingParent.orientation)
-                        - lastAppliedLayoutRect.getDimension(tilingParent.orientation))
-                return
-            }
-
-            let (lParent, lOwnIndex) = window.closestParent(hasChildrenInDirection: .left, withLayout: .tiles) ?? (nil, nil)
-            let (dParent, dOwnIndex) = window.closestParent(hasChildrenInDirection: .down, withLayout: .tiles) ?? (nil, nil)
-            let (uParent, uOwnIndex) = window.closestParent(hasChildrenInDirection: .up, withLayout: .tiles) ?? (nil, nil)
-            let (rParent, rOwnIndex) = window.closestParent(hasChildrenInDirection: .right, withLayout: .tiles) ?? (nil, nil)
+            let (lParent, lOwnIndex) = window.closestParent(hasChildrenInDirection: .left, withLayout: [.tiles, .scrolling]) ?? (nil, nil)
+            let (dParent, dOwnIndex) = window.closestParent(hasChildrenInDirection: .down, withLayout: [.tiles, .scrolling]) ?? (nil, nil)
+            let (uParent, uOwnIndex) = window.closestParent(hasChildrenInDirection: .up, withLayout: [.tiles, .scrolling]) ?? (nil, nil)
+            let (rParent, rOwnIndex) = window.closestParent(hasChildrenInDirection: .right, withLayout: [.tiles, .scrolling]) ?? (nil, nil)
             let table: [(CGFloat, TilingContainer?, Int?, Int?)] = [
                 (lastAppliedLayoutRect.minX - rect.minX, lParent, 0,                        lOwnIndex),               // Horizontal, to the left of the window
                 (rect.maxY - lastAppliedLayoutRect.maxY, dParent, dOwnIndex.map { $0 + 1 }, dParent?.children.count), // Vertical, to the down of the window
